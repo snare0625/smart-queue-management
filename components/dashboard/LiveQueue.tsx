@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { BarChart3, Clock, Plus, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BarChart3, Clock, FastForward, Plus, Users } from "lucide-react";
 import { StatCard } from "@/components/ui/StatCard";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { Delta } from "@/components/ui/Delta";
@@ -12,10 +12,28 @@ import { TicketCard } from "@/components/ui/TicketCard";
 import { Callout } from "@/components/ui/Callout";
 import { StaffRow } from "@/components/ui/StaffRow";
 import { QueuePrediction, ServiceDistribution, SimulationResults } from "./Analytics";
-import { FILTERS, SEED_QUEUE, STAFF, type QueueEntry } from "@/lib/data";
+import { FILTERS, STAFF, seedCustomers, toEntry } from "@/lib/data";
+import { SERVICES, explainNext, fmtTime, rankQueue, type Customer, type Priority } from "@/lib/engine";
+
+const NAMES = ["Ava N.", "Liam K.", "Mia D.", "Ethan B.", "Zoe P.", "Lucas M.", "Chloe T.", "Owen S."];
 
 export function LiveQueue() {
-  const [rows, setRows] = useState<QueueEntry[]>(SEED_QUEUE);
+  // Time is state so the queue re-ranks as it passes. `skew` lets you fast-forward to watch scores age.
+  const [clock, setClock] = useState<number | null>(null);
+  const [skew, setSkew] = useState(0);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [ticketNo, setTicketNo] = useState(27);
+  useEffect(() => {
+    const t0 = Date.now();
+    setClock(t0);
+    setCustomers(seedCustomers(t0));
+    const t = setInterval(() => setClock(Date.now()), 15000);
+    return () => clearInterval(t);
+  }, []);
+  const now = (clock ?? 0) + skew;
+
+  const ranked = useMemo(() => rankQueue(customers, now, STAFF.length), [customers, now]);
+  const rows = ranked.map(toEntry);
   const [serving, setServing] = useState({ ticket: "A014", name: "Emma R.", service: "Urgent Consultation", meta: "Started 10:24" });
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
   const count = (f: string) => (f === "All" ? rows.length : rows.filter((r) => r.cat === f).length);
@@ -23,11 +41,17 @@ export function LiveQueue() {
   const next = rows[0];
   const callNext = () => {
     if (!next) return;
-    const t = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-    setServing({ ticket: next.id, name: next.name, service: next.service, meta: "Started " + t });
-    setRows((r) => r.slice(1).map((x, i) => (i === 0 ? { ...x, status: "next" } : x)));
+    setServing({ ticket: next.id, name: next.name, service: next.service, meta: "Started " + fmtTime(now) });
+    setCustomers((cs) => cs.filter((c) => c.id !== next.id));
   };
-  const addCustomer = () => setRows((r) => [...r, { id: "A0" + (40 + r.length), name: `Walk-in ${r.length + 1}`, service: "General Enquiry", priority: "normal", arrived: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }), waiting: "<1 min", est: "20 min", status: r.length ? "waiting" : "next", stripe: "none", cat: "General" }]);
+  const addCustomer = () => {
+    const roll = Math.random();
+    const priority: Priority = roll < 0.15 ? "urgent" : roll < 0.3 ? "priority" : "normal";
+    const service = SERVICES[Math.floor(Math.random() * SERVICES.length)];
+    setCustomers((cs) => [...cs, { id: "A0" + ticketNo, name: NAMES[ticketNo % NAMES.length], serviceId: service.id, priority, arrivedAt: now }]);
+    setTicketNo((n) => n + 1);
+  };
+  if (clock === null) return <main />;
 
   return (
     <main style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
@@ -39,7 +63,7 @@ export function LiveQueue() {
         <StatCard visual={<ProgressRing value={87} />} value="87%" label="Staff Utilisation" />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 428px", gap: 12 }}>
-        <Panel title="Queue" size="lg" action={<Button icon={Plus} onClick={addCustomer}>Add Customer</Button>}>
+        <Panel title="Queue" size="lg" action={<div style={{ display: "flex", gap: 8 }}><Button variant="secondary" icon={FastForward} onClick={() => setSkew((s) => s + 10 * 60_000)}>+10 min</Button><Button icon={Plus} onClick={addCustomer}>Add Customer</Button></div>}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {FILTERS.map((f) => <FilterTab key={f} label={f} count={count(f)} active={filter === f} onClick={() => setFilter(f)} />)}
           </div>
@@ -50,7 +74,7 @@ export function LiveQueue() {
             <TicketCard ticket={serving.ticket} room="Room 2" name={serving.name} service={serving.service} meta={serving.meta} />
             <h3 style={{ margin: 0, font: "var(--type-panel-title)" }}>Up Next</h3>
             {next && <TicketCard tone="next" ticket={next.id} name={next.name} service={next.service} trailing={"Est. " + next.est} onClick={callNext} />}
-            <Callout title="Why this customer?" items={["Urgent priority", "Longest waiting high-priority customer", "Suitable staff member available (Dr. Patel)", "Estimated service time: 15 minutes"]} />
+            <Callout title="Why this customer?" items={explainNext(ranked)} />
           </Panel>
           <Panel title="Staff Status" actionLabel="View All">
             <div>{STAFF.map((s, i) => <StaffRow key={s.name} {...s} note={i === 0 ? serving.ticket + " (15 min)" : s.note} />)}</div>

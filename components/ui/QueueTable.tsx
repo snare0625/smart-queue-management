@@ -12,7 +12,7 @@ export function QueueTable({ rows, onRowAction }: { rows: QueueEntry[]; onRowAct
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead><tr>{["#", "Name", "Service", "Priority", "Arrived", "Waiting", "Est. Wait", "Status", "Actions"].map((h) => <th key={h} style={{ ...th, textAlign: h === "Actions" ? "right" : "left" }}>{h}</th>)}</tr></thead>
+        <thead><tr>{["#", "Name", "Service", "Priority", "Arrived", "Waiting", "Est. Wait", "Score", "Status", "Actions"].map((h) => <th key={h} style={{ ...th, textAlign: h === "Actions" ? "right" : "left" }}>{h}</th>)}</tr></thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.id}>
@@ -23,6 +23,7 @@ export function QueueTable({ rows, onRowAction }: { rows: QueueEntry[]; onRowAct
               <td style={td}>{r.arrived}</td>
               <td style={td}>{r.waiting}</td>
               <td style={td}>{r.est}</td>
+              <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{r.score ?? "–"}</td>
               <td style={td}><Badge tone={r.status}>{r.status === "next" ? "Next" : "Waiting"}</Badge></td>
               <td style={{ ...td, textAlign: "right" }}><IconButton icon={MoreHorizontal} label={`Actions for ${r.name}`} size={26} onClick={() => onRowAction?.(r)} style={{ marginLeft: "auto" }} /></td>
             </tr>

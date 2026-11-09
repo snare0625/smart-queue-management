@@ -1,25 +1,38 @@
+import { fmtTime, type Customer, type Category, type Ranked } from "@/lib/engine";
+
 export type Priority = "urgent" | "priority" | "appointment" | "normal";
 export type Stripe = "urgent" | "priority" | "appointment" | "general" | "teal" | "none";
-export type Category = "General" | "Consultation" | "Test" | "Follow-up";
-export interface QueueEntry { id: string; name: string; service: string; priority: Priority; arrived: string; waiting: string; est: string; status: "next" | "waiting"; stripe: Stripe; cat: Category; }
+export type { Category };
+export interface QueueEntry { id: string; name: string; service: string; priority: Priority; arrived: string; waiting: string; est: string; status: "next" | "waiting"; stripe: Stripe; cat: Category; score?: number }
 
-const raw: [string, string, Priority, string, string, string, Stripe, Category][] = [
-  ["Emma R.", "Urgent Consultation", "urgent", "09:42", "42 min", "5 min", "urgent", "Consultation"],
-  ["James T.", "Blood Test", "appointment", "10:00", "24 min", "10 min", "none", "Test"],
-  ["Sarah L.", "General Enquiry", "normal", "10:05", "19 min", "15 min", "general", "General"],
-  ["Michael B.", "Follow-up", "normal", "10:08", "16 min", "20 min", "none", "Follow-up"],
-  ["Priya K.", "Consultation", "priority", "10:12", "12 min", "10 min", "priority", "Consultation"],
-  ["Daniel M.", "Blood Test", "normal", "10:15", "9 min", "15 min", "none", "Test"],
-  ["Olivia S.", "General Enquiry", "normal", "10:16", "8 min", "20 min", "general", "General"],
-  ["Luca P.", "Consultation", "appointment", "10:20", "4 min", "10 min", "none", "Consultation"],
-  ["Sophia M.", "Follow-up", "normal", "10:21", "3 min", "15 min", "none", "Follow-up"],
-  ["Alex W.", "Blood Test", "normal", "10:22", "2 min", "10 min", "none", "General"],
-  ["Isabella C.", "General Enquiry", "normal", "10:23", "1 min", "25 min", "teal", "General"],
-  ["Noah D.", "Consultation", "normal", "10:24", "<1 min", "20 min", "none", "General"],
+// [name, serviceId, priority, minutes ago, appointment slot relative to now (min)]
+const seed: [string, string, Customer["priority"], number, number?][] = [
+  ["Emma R.", "urgent-consult", "urgent", 42],
+  ["James T.", "blood", "normal", 24, -20],
+  ["Sarah L.", "general", "normal", 19],
+  ["Michael B.", "followup", "normal", 16],
+  ["Priya K.", "consult", "priority", 12],
+  ["Daniel M.", "blood", "normal", 9],
+  ["Olivia S.", "general", "normal", 8],
+  ["Luca P.", "consult", "normal", 4, 15], // arrived early for a slot 15 min from now
+  ["Sophia M.", "followup", "normal", 3],
+  ["Alex W.", "assessment", "normal", 2],
+  ["Isabella C.", "general", "normal", 1],
+  ["Noah D.", "consult", "normal", 0],
 ];
-export const SEED_QUEUE: QueueEntry[] = raw.map(([name, service, priority, arrived, waiting, est, stripe, cat], i) => ({
-  id: "A0" + (15 + i), name, service, priority, arrived, waiting, est, stripe, cat, status: i === 0 ? "next" : "waiting",
+export const seedCustomers = (now: number): Customer[] => seed.map(([name, serviceId, priority, ago, appt], i) => ({
+  id: "A0" + (15 + i), name, serviceId, priority, arrivedAt: now - ago * 60_000, ...(appt != null && { appointmentAt: now + appt * 60_000 }),
 }));
+
+const fmtMin = (m: number) => (m < 1 ? "<1 min" : `${Math.round(m)} min`);
+export function toEntry(r: Ranked, i: number): QueueEntry {
+  const { customer: c, service: s } = r;
+  const priority: Priority = c.priority !== "normal" ? c.priority : c.appointmentAt != null ? "appointment" : "normal";
+  return {
+    id: c.id, name: c.name, service: s.name, priority, arrived: fmtTime(c.arrivedAt), waiting: fmtMin(r.waitedMin), est: fmtMin(r.estWaitMin),
+    status: i === 0 ? "next" : "waiting", stripe: priority === "normal" ? "none" : priority, cat: s.category, score: Math.round(r.score),
+  };
+}
 export const FILTERS = ["All", "General", "Consultation", "Test", "Follow-up"] as const;
 
 export type StaffStatus = "busy" | "available" | "break";
