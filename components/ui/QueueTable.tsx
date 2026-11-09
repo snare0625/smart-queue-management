@@ -6,8 +6,8 @@ import { IconButton } from "./IconButton";
 import type { QueueEntry, Stripe } from "@/lib/data";
 export interface RowAction { label: string; onClick: () => void; disabled?: boolean; danger?: boolean }
 const STRIPE: Record<Stripe, string> = { urgent: "var(--red-500)", priority: "var(--orange-500)", appointment: "var(--purple-500)", general: "var(--cyan-500)", teal: "var(--teal-400)", none: "transparent" };
-const th: CSSProperties = { textAlign: "left", font: "var(--fw-medium) var(--fs-table) var(--font-sans)", color: "var(--text-secondary)", padding: "8px 10px", borderBottom: "1px solid var(--border-card)", whiteSpace: "nowrap" };
-const td: CSSProperties = { font: "var(--type-table)", color: "var(--text-primary)", padding: "0 10px", height: "var(--table-row-h)", borderBottom: "1px solid var(--border-card)", whiteSpace: "nowrap" };
+export const th: CSSProperties = { textAlign: "left", font: "var(--fw-medium) var(--fs-table) var(--font-sans)", color: "var(--text-secondary)", padding: "8px 10px", borderBottom: "1px solid var(--border-card)", whiteSpace: "nowrap" };
+export const td: CSSProperties = { font: "var(--type-table)", color: "var(--text-primary)", padding: "0 10px", height: "var(--table-row-h)", borderBottom: "1px solid var(--border-card)", whiteSpace: "nowrap" };
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 // The menu is position:fixed (placed from the button's screen position) so the table's scroll container can't clip it.
 function RowMenu({ x, y, actions, onClose }: { x: number; y: number; actions: RowAction[]; onClose: () => void }) {

@@ -44,4 +44,4 @@ export interface Visit {
 export interface QueueState { waiting: Customer[]; staff: Staff[]; history: Visit[] }
 
 /** A ranked customer plus the planner's forecast: who will serve them and when (null = no qualified staff on duty). */
-export interface Assignment extends Ranked { staffId: string | null; startAt: number | null; estWaitMin: number | null }
+export interface Assignment extends Ranked { staffId: string | null; startAt: number | null; estWaitMin: number | null; serviceMin: number }

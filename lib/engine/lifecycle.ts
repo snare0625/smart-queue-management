@@ -1,5 +1,6 @@
 import { canServe, staffStatus } from "./assign";
 import { serviceById } from "./config";
+import { learnDurations } from "./learning";
 import { MIN } from "./scoring";
 import type { Customer, QueueState, Staff, Visit } from "./types";
 
@@ -50,7 +51,8 @@ export function queueReducer(state: QueueState, action: QueueAction): QueueState
     case "serve": {
       if (cannotServe(state, action.customerId, action.staffId, action.at)) return state;
       const customer = state.waiting.find((c) => c.id === action.customerId)!;
-      const expectedEnd = action.at + serviceById(customer.serviceId).durationMin * MIN;
+      // Expected end uses what this service has ACTUALLY been taking lately, not just the configured duration.
+      const expectedEnd = action.at + learnDurations(state.history)[customer.serviceId].estimateMin * MIN;
       return {
         ...state,
         waiting: leave(state, customer.id),

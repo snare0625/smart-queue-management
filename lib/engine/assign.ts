@@ -1,4 +1,5 @@
 import { MIN, scoreReasons } from "./scoring";
+import type { Durations } from "./learning";
 import type { Assignment, Ranked, Staff, StaffStatus } from "./types";
 
 export const canServe = (s: Staff, serviceId: string) => s.serviceIds.includes(serviceId);
@@ -23,8 +24,10 @@ export const freeAt = (s: Staff, now: number) => Math.max(now, s.breakUntil ?? 0
  *            that customer's start time is the staff member's free time; push the staff member's free time on by the service duration.
  * Ties between staff go to the specialist (fewest skills), keeping generalists free for work only they can do.
  * This mirrors the real dispatch rule, so estimated waits and "who's next" come from the same logic.
+ * `durations` are the learned minutes per service (see learning.ts); without them the configured durations are used.
  */
-export function planQueue(ranked: Ranked[], staff: Staff[], now: number): Assignment[] {
+export function planQueue(ranked: Ranked[], staff: Staff[], now: number, durations: Durations = {}): Assignment[] {
+  const minutes = (r: Ranked) => durations[r.service.id] ?? r.service.durationMin;
   const free = new Map(staff.map((s) => [s.id, freeAt(s, now)]));
   const waiting = [...ranked];
   const pool = [...staff];
@@ -36,10 +39,10 @@ export function planQueue(ranked: Ranked[], staff: Staff[], now: number): Assign
     if (i < 0) { pool.shift(); continue; } // nothing left this person can do
     const [r] = waiting.splice(i, 1);
     const startAt = free.get(s.id)!;
-    planned.set(r.customer.id, { ...r, staffId: s.id, startAt, estWaitMin: (startAt - now) / MIN });
-    free.set(s.id, startAt + r.service.durationMin * MIN);
+    planned.set(r.customer.id, { ...r, staffId: s.id, startAt, estWaitMin: (startAt - now) / MIN, serviceMin: minutes(r) });
+    free.set(s.id, startAt + minutes(r) * MIN);
   }
-  return ranked.map((r) => planned.get(r.customer.id) ?? { ...r, staffId: null, startAt: null, estWaitMin: null });
+  return ranked.map((r) => planned.get(r.customer.id) ?? { ...r, staffId: null, startAt: null, estWaitMin: null, serviceMin: minutes(r) });
 }
 
 /** The next customer to be called: earliest planned start, ties broken by queue position. */
@@ -63,6 +66,7 @@ export function explainNext(plan: Assignment[], staff: Staff[], now: number): st
     const topStaff = byId(top.staffId);
     lines.push(topStaff ? `#1 ${top.customer.id} needs ${top.service.name} — ${topStaff.name} ${inMin(top.startAt!, now)}` : `#1 ${top.customer.id} needs ${top.service.name} — no qualified staff on duty`);
   }
-  lines.push(...scoreReasons(next).slice(0, 2), `Estimated service time: ${next.service.durationMin} min`);
+  const est = Math.round(next.serviceMin);
+  lines.push(...scoreReasons(next).slice(0, 2), `Estimated service time: ${est} min${est !== next.service.durationMin ? ` (learned; default ${next.service.durationMin})` : ""}`);
   return lines;
 }

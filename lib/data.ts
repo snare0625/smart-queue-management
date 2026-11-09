@@ -1,4 +1,4 @@
-import { fmtTime, isOverrunning, serviceById, staffStatus, type Assignment, type Customer, type Category, type Staff, type StaffStatus as EngineStaffStatus } from "@/lib/engine";
+import { fmtTime, isOverrunning, serviceById, staffStatus, type Assignment, type Customer, type Category, type Staff, type StaffStatus as EngineStaffStatus, type Visit } from "@/lib/engine";
 
 export type Priority = "urgent" | "priority" | "appointment" | "normal";
 export type Stripe = "urgent" | "priority" | "appointment" | "general" | "teal" | "none";
@@ -46,6 +46,20 @@ export const seedStaff = (now: number): Staff[] => [
     serving: servingAs({ id: "A013", name: "Tom V.", serviceId: "consult", priority: "normal", arrivedAt: now - 35 * 60_000 }, now, 10, 10) },
   { id: "wright", name: "Nurse Wright", serviceIds: ["blood"], avatar: "/assets/avatars/nurse-wright.png", breakUntil: now + 6 * 60_000 },
 ];
+
+// Visits completed earlier this morning: [serviceId, staffId, actual minutes, waited minutes]. Blood tests and consultations
+// have been running long, so the learned estimates start above the configured ones.
+const earlier: [string, string, number, number][] = [
+  ["blood", "evans", 7, 4], ["consult", "kim", 24, 12], ["general", "evans", 9, 6], ["blood", "wright", 8, 3],
+  ["followup", "patel", 13, 15], ["consult", "patel", 27, 18], ["blood", "evans", 6, 5], ["general", "kim", 11, 9],
+  ["followup", "patel", 12, 10], ["blood", "wright", 9, 2], ["consult", "kim", 22, 20], ["general", "evans", 10, 7],
+];
+export const seedHistory = (now: number): Visit[] => earlier.map(([serviceId, staffId, took, waited], i) => {
+  const endedAt = now - (150 - i * 10) * 60_000;
+  const startedAt = endedAt - took * 60_000;
+  const customer: Customer = { id: "A" + String(i + 1).padStart(3, "0"), name: "Earlier visitor", serviceId, priority: "normal", arrivedAt: startedAt - waited * 60_000 };
+  return { customer, serviceId, staffId, outcome: "completed", startedAt, endedAt, waitMin: waited, serviceMin: took };
+});
 
 export type StaffStatus = EngineStaffStatus;
 export function toStaffRow(s: Staff, plan: Assignment[], now: number) {
