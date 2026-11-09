@@ -5,12 +5,17 @@ export const canServe = (s: Staff, serviceId: string) => s.serviceIds.includes(s
 
 export function staffStatus(s: Staff, now: number): StaffStatus {
   if (s.breakUntil != null && s.breakUntil > now) return "break";
-  if (s.serving && s.serving.expectedEnd > now) return "busy";
+  if (s.serving) return "busy"; // busy until someone marks the visit Completed / No Show
   return "available";
 }
 
-/** Earliest moment this person could start with a new customer. */
-export const freeAt = (s: Staff, now: number) => Math.max(now, s.breakUntil ?? 0, s.serving?.expectedEnd ?? 0);
+export const isOverrunning = (s: Staff, now: number) => !!s.serving && s.serving.expectedEnd <= now;
+
+/**
+ * Earliest moment this person could start with a new customer.
+ * Someone overrunning their expected end is assumed to need at least one more minute, so they're never shown as "free now" while still busy.
+ */
+export const freeAt = (s: Staff, now: number) => Math.max(now, s.breakUntil ?? 0, s.serving ? Math.max(s.serving.expectedEnd, now + MIN) : 0);
 
 /**
  * Forecast the rest of the day by "playing the queue forward":

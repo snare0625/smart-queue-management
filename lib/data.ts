@@ -1,4 +1,4 @@
-import { fmtTime, serviceById, staffStatus, type Assignment, type Customer, type Category, type Staff, type StaffStatus as EngineStaffStatus } from "@/lib/engine";
+import { fmtTime, isOverrunning, serviceById, staffStatus, type Assignment, type Customer, type Category, type Staff, type StaffStatus as EngineStaffStatus } from "@/lib/engine";
 
 export type Priority = "urgent" | "priority" | "appointment" | "normal";
 export type Stripe = "urgent" | "priority" | "appointment" | "general" | "teal" | "none";
@@ -52,8 +52,9 @@ export function toStaffRow(s: Staff, plan: Assignment[], now: number) {
   const status = staffStatus(s, now);
   const left = (t: number) => Math.max(1, Math.ceil((t - now) / 60_000));
   const queued = plan.filter((a) => a.staffId === s.id).length;
-  const note = status === "busy" ? `${s.serving!.customer.id} (${left(s.serving!.expectedEnd)} min left)`
+  const over = isOverrunning(s, now);
+  const note = status === "busy" ? `${s.serving!.customer.id} · ${over ? `over by ${Math.floor((now - s.serving!.expectedEnd) / 60_000)} min` : `${left(s.serving!.expectedEnd)} min left`}`
     : status === "break" ? `Back at ${fmtTime(s.breakUntil!)}`
     : queued ? `${queued} queued for them` : "Nothing queued";
-  return { name: s.name, skills: s.serviceIds.map((id) => serviceById(id).name).join(", "), status, note, src: s.avatar };
+  return { name: s.name, skills: s.serviceIds.map((id) => serviceById(id).name).join(", "), status, note, src: s.avatar, warn: over };
 }

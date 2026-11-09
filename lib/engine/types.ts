@@ -29,5 +29,19 @@ export interface Staff {
   serving?: Serving; // who they're with right now
 }
 
+/** A finished visit. waitMin = arrival → called (or → left); serviceMin = actual time at the desk, only for completed visits. */
+export interface Visit {
+  customer: Customer;
+  serviceId: string;
+  staffId?: string;
+  outcome: "completed" | "no-show" | "cancelled";
+  startedAt?: number;
+  endedAt: number;
+  waitMin: number;
+  serviceMin?: number;
+}
+
+export interface QueueState { waiting: Customer[]; staff: Staff[]; history: Visit[] }
+
 /** A ranked customer plus the planner's forecast: who will serve them and when (null = no qualified staff on duty). */
 export interface Assignment extends Ranked { staffId: string | null; startAt: number | null; estWaitMin: number | null }
