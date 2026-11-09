@@ -1,7 +1,7 @@
 import { WEIGHTS, type Weights, serviceById } from "./config";
 import type { Customer, Ranked, ScorePart, Scored, Service } from "./types";
+export const MIN = 60_000;
 
-const MIN = 60_000;
 export const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 /** When does this customer's wait start "counting"? Early appointments don't get credit for showing up early. */
@@ -34,26 +34,13 @@ export function scoreCustomer(c: Customer, service: Service, now: number, w: Wei
   return { customer: c, service, score, parts, waitedMin };
 }
 
-/**
- * Score everyone, sort best-first. Ties fall back to arrival order (FIFO), then ticket id, so the result is deterministic.
- * estWaitMin is a rough placeholder (work ahead ÷ staff); feature 2 replaces it with a per-staff schedule.
- */
-export function rankQueue(customers: Customer[], now: number, staffCount = 1, w: Weights = WEIGHTS): Ranked[] {
+/** Score everyone, sort best-first. Ties fall back to arrival order (FIFO), then ticket id, so the result is deterministic. */
+export function rankQueue(customers: Customer[], now: number, w: Weights = WEIGHTS): Ranked[] {
   const scored = customers.map((c) => scoreCustomer(c, serviceById(c.serviceId), now, w));
   scored.sort((a, b) => b.score - a.score || a.customer.arrivedAt - b.customer.arrivedAt || a.customer.id.localeCompare(b.customer.id));
-  let workAhead = 0;
-  return scored.map((s, i) => {
-    const r: Ranked = { ...s, position: i + 1, estWaitMin: Math.round(workAhead / Math.max(1, staffCount)) };
-    workAhead += s.service.durationMin;
-    return r;
-  });
+  return scored.map((s, i) => ({ ...s, position: i + 1 }));
 }
 
-/** Human-readable reasons for why the top-ranked customer is next. */
-export function explainNext(ranked: Ranked[]): string[] {
-  const [top, runnerUp] = ranked;
-  if (!top) return [];
-  const reasons = [...top.parts].filter((p) => p.points >= 1).sort((a, b) => b.points - a.points).map((p) => `${p.label} (+${Math.round(p.points)})`);
-  if (runnerUp) reasons.push(`Score ${Math.round(top.score)} vs ${Math.round(runnerUp.score)} for ${runnerUp.customer.id} (${runnerUp.customer.name})`);
-  return reasons;
-}
+/** The parts of a score as readable reasons, biggest first, e.g. "Urgent case (+60)". */
+export const scoreReasons = (s: Scored): string[] =>
+  [...s.parts].filter((p) => p.points >= 1).sort((a, b) => b.points - a.points).map((p) => `${p.label} (+${Math.round(p.points)})`);

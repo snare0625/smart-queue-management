@@ -16,4 +16,18 @@ export type ScorePartKey = "wait" | "overdue" | "priority" | "appointment" | "sh
 export interface ScorePart { key: ScorePartKey; label: string; points: number }
 
 export interface Scored { customer: Customer; service: Service; score: number; parts: ScorePart[]; waitedMin: number }
-export interface Ranked extends Scored { position: number; estWaitMin: number }
+export interface Ranked extends Scored { position: number }
+
+export type StaffStatus = "available" | "busy" | "break";
+export interface Serving { customer: Customer; serviceId: string; startedAt: number; expectedEnd: number }
+export interface Staff {
+  id: string;
+  name: string;
+  serviceIds: string[]; // the services this person is qualified to handle
+  avatar?: string;
+  breakUntil?: number; // epoch ms — on break until then
+  serving?: Serving; // who they're with right now
+}
+
+/** A ranked customer plus the planner's forecast: who will serve them and when (null = no qualified staff on duty). */
+export interface Assignment extends Ranked { staffId: string | null; startAt: number | null; estWaitMin: number | null }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { WEIGHTS } from "./config";
-import { explainNext, rankQueue } from "./scoring";
+import { rankQueue, scoreReasons } from "./scoring";
 import type { Customer } from "./types";
 
 const NOW = Date.UTC(2026, 10, 1, 10, 0);
@@ -54,9 +54,8 @@ describe("rankQueue", () => {
     expect(order([long(20), short])).toEqual(["45-min job", "5-min job"]); // 20 vs 13.9
   });
 
-  it("explains the decision", () => {
-    const why = explainNext(rankQueue([c("normal", 20), c("urgent", 0, { priority: "urgent" })], NOW));
-    expect(why[0]).toBe("Urgent case (+60)");
-    expect(why.at(-1)).toBe("Score 68 vs 28 for normal (normal)"); // 60 + 7.8 quick-service vs 20 + 7.8
+  it("turns the score into readable reasons, biggest first", () => {
+    const [top] = rankQueue([c("normal", 20), c("urgent", 5, { priority: "urgent" })], NOW);
+    expect(scoreReasons(top)).toEqual(["Urgent case (+60)", "Quick service (~10 min) (+8)", "Waiting 5 min (+5)"]);
   });
 });

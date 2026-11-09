@@ -1,9 +1,9 @@
-import { fmtTime, type Customer, type Category, type Ranked } from "@/lib/engine";
+import { fmtTime, serviceById, staffStatus, type Assignment, type Customer, type Category, type Staff, type StaffStatus as EngineStaffStatus } from "@/lib/engine";
 
 export type Priority = "urgent" | "priority" | "appointment" | "normal";
 export type Stripe = "urgent" | "priority" | "appointment" | "general" | "teal" | "none";
 export type { Category };
-export interface QueueEntry { id: string; name: string; service: string; priority: Priority; arrived: string; waiting: string; est: string; status: "next" | "waiting"; stripe: Stripe; cat: Category; score?: number }
+export interface QueueEntry { id: string; name: string; service: string; priority: Priority; arrived: string; waiting: string; est: string; status: "next" | "waiting"; stripe: Stripe; cat: Category; score?: number; staff?: string; position?: number }
 
 // [name, serviceId, priority, minutes ago, appointment slot relative to now (min)]
 const seed: [string, string, Customer["priority"], number, number?][] = [
@@ -25,20 +25,35 @@ export const seedCustomers = (now: number): Customer[] => seed.map(([name, servi
 }));
 
 const fmtMin = (m: number) => (m < 1 ? "<1 min" : `${Math.round(m)} min`);
-export function toEntry(r: Ranked, i: number): QueueEntry {
-  const { customer: c, service: s } = r;
+export function toEntry(a: Assignment, nextId: string | undefined, staff: Staff[]): QueueEntry {
+  const { customer: c, service: s } = a;
   const priority: Priority = c.priority !== "normal" ? c.priority : c.appointmentAt != null ? "appointment" : "normal";
   return {
-    id: c.id, name: c.name, service: s.name, priority, arrived: fmtTime(c.arrivedAt), waiting: fmtMin(r.waitedMin), est: fmtMin(r.estWaitMin),
-    status: i === 0 ? "next" : "waiting", stripe: priority === "normal" ? "none" : priority, cat: s.category, score: Math.round(r.score),
+    id: c.id, name: c.name, service: s.name, priority, arrived: fmtTime(c.arrivedAt), waiting: fmtMin(a.waitedMin), est: a.estWaitMin == null ? "No staff" : fmtMin(a.estWaitMin),
+    status: c.id === nextId ? "next" : "waiting", stripe: priority === "normal" ? "none" : priority, cat: s.category, score: Math.round(a.score),
+    staff: staff.find((x) => x.id === a.staffId)?.name ?? "–", position: a.position,
   };
 }
 export const FILTERS = ["All", "General", "Consultation", "Test", "Follow-up"] as const;
 
-export type StaffStatus = "busy" | "available" | "break";
-export const STAFF: { name: string; skills: string; status: StaffStatus; note?: string; src: string }[] = [
-  { name: "Dr. Patel", skills: "Consultation, Follow-up", status: "busy", note: "A014 (15 min)", src: "/assets/avatars/dr-patel.png" },
-  { name: "Nurse Evans", skills: "Blood Test, General", status: "available", src: "/assets/avatars/nurse-evans.png" },
-  { name: "Dr. Kim", skills: "Consultation, General", status: "busy", note: "A020 (10 min)", src: "/assets/avatars/dr-kim.png" },
-  { name: "Nurse Wright", skills: "Blood Test", status: "break", note: "Back at 10:30", src: "/assets/avatars/nurse-wright.png" },
+const servingAs = (customer: Customer, now: number, startedAgo: number, endsIn: number) =>
+  ({ customer, serviceId: customer.serviceId, startedAt: now - startedAgo * 60_000, expectedEnd: now + endsIn * 60_000 });
+export const seedStaff = (now: number): Staff[] => [
+  { id: "patel", name: "Dr. Patel", serviceIds: ["consult", "urgent-consult", "assessment", "followup"], avatar: "/assets/avatars/dr-patel.png",
+    serving: servingAs({ id: "A014", name: "Grace H.", serviceId: "urgent-consult", priority: "urgent", arrivedAt: now - 30 * 60_000 }, now, 12, 3) },
+  { id: "evans", name: "Nurse Evans", serviceIds: ["blood", "general"], avatar: "/assets/avatars/nurse-evans.png" },
+  { id: "kim", name: "Dr. Kim", serviceIds: ["consult", "urgent-consult", "general"], avatar: "/assets/avatars/dr-kim.png",
+    serving: servingAs({ id: "A013", name: "Tom V.", serviceId: "consult", priority: "normal", arrivedAt: now - 35 * 60_000 }, now, 10, 10) },
+  { id: "wright", name: "Nurse Wright", serviceIds: ["blood"], avatar: "/assets/avatars/nurse-wright.png", breakUntil: now + 6 * 60_000 },
 ];
+
+export type StaffStatus = EngineStaffStatus;
+export function toStaffRow(s: Staff, plan: Assignment[], now: number) {
+  const status = staffStatus(s, now);
+  const left = (t: number) => Math.max(1, Math.ceil((t - now) / 60_000));
+  const queued = plan.filter((a) => a.staffId === s.id).length;
+  const note = status === "busy" ? `${s.serving!.customer.id} (${left(s.serving!.expectedEnd)} min left)`
+    : status === "break" ? `Back at ${fmtTime(s.breakUntil!)}`
+    : queued ? `${queued} queued for them` : "Nothing queued";
+  return { name: s.name, skills: s.serviceIds.map((id) => serviceById(id).name).join(", "), status, note, src: s.avatar };
+}
