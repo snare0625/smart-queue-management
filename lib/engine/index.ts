@@ -4,3 +4,4 @@ export * from "./scoring";
 export * from "./assign";
 export * from "./lifecycle";
 export * from "./learning";
+export * from "./publicView";

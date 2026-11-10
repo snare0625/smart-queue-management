@@ -1,8 +1,9 @@
 "use client";
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { seedCustomers, seedHistory, seedStaff } from "@/lib/data";
+import { publishDisplay } from "@/lib/sync/displayChannel";
 import {
-  MIN, learnDurations, planQueue, queueReducer, rankQueue, toDurations,
+  MIN, learnDurations, planQueue, queueReducer, rankQueue, toDurations, toPublicView,
   type Assignment, type Learned, type QueueAction, type QueueState,
 } from "@/lib/engine";
 
@@ -44,6 +45,17 @@ export function QueueProvider({ children }: { children: ReactNode }) {
   // Learned durations only change when history does; the plan is recalculated on every arrival, departure, staff change or tick.
   const learned = useMemo(() => learnDurations(state.history), [state.history]);
   const plan = useMemo(() => planQueue(rankQueue(state.waiting, now), state.staff, now, toDurations(learned)), [state.waiting, state.staff, now, learned]);
+
+  // Publish the privacy-safe snapshot to the waiting-room screen whenever it changes. The ref lets a late-opening screen get the latest one.
+  const publicView = useMemo(() => toPublicView(plan, state.staff, now), [plan, state.staff, now]);
+  const latest = useRef(publicView);
+  latest.current = publicView;
+  const channel = useRef<ReturnType<typeof publishDisplay> | null>(null);
+  useEffect(() => {
+    channel.current = publishDisplay(() => latest.current);
+    return () => channel.current?.close();
+  }, []);
+  useEffect(() => { if (clock !== null) channel.current?.send(publicView); }, [publicView, clock]);
 
   const value: QueueCtx = {
     ready: clock !== null, now, state, dispatch, learned, plan,

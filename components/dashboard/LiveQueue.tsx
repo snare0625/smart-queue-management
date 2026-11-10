@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { BarChart3, Clock, FastForward, Plus, Users } from "lucide-react";
+import { BarChart3, Clock, FastForward, Monitor, Plus, Users } from "lucide-react";
 import { StatCard } from "@/components/ui/StatCard";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { Panel } from "@/components/ui/Panel";
@@ -62,7 +62,7 @@ export function LiveQueue() {
         <StatCard visual={<ProgressRing value={utilisation} />} value={utilisation + "%"} label="Staff Utilisation" />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 428px", gap: 12 }}>
-        <Panel title="Queue" size="lg" action={<div style={{ display: "flex", gap: 8 }}><Button variant="secondary" icon={FastForward} onClick={() => fastForward(10)}>+10 min</Button><Button icon={Plus} onClick={addCustomer}>Add Customer</Button></div>}>
+        <Panel title="Queue" size="lg" action={<div style={{ display: "flex", gap: 8 }}><Button variant="secondary" icon={Monitor} onClick={() => window.open("/display", "queuepro-display")}>Open display</Button><Button variant="secondary" icon={FastForward} onClick={() => fastForward(10)}>+10 min</Button><Button icon={Plus} onClick={addCustomer}>Add Customer</Button></div>}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {FILTERS.map((f) => <FilterTab key={f} label={f} count={count(f)} active={filter === f} onClick={() => setFilter(f)} />)}
           </div>
