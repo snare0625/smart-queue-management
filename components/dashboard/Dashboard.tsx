@@ -5,9 +5,11 @@ import { Sidebar } from "./Sidebar";
 import { LiveQueue } from "./LiveQueue";
 import { ServicesPage } from "./ServicesPage";
 import { SettingsPage } from "./SettingsPage";
+import { SimulationPage } from "./SimulationPage";
 import { QueueProvider, useQueue } from "./QueueProvider";
 import { Login } from "@/components/auth/Login";
-const PAGES: Record<string, () => React.JSX.Element> = { "Live Queue": LiveQueue, Services: ServicesPage, Settings: SettingsPage };
+// Each page gets `go` so it can link to another page (e.g. Live Queue → Simulation).
+const PAGES: Record<string, (p: { go: (page: string) => void }) => React.JSX.Element> = { "Live Queue": LiveQueue, Services: ServicesPage, Simulation: SimulationPage, Settings: SettingsPage };
 
 export function Dashboard() {
   return <QueueProvider><Shell /></QueueProvider>;
@@ -25,7 +27,7 @@ function Shell() {
       <Sidebar page={page} setPage={setPage} />
       <div style={{ minWidth: 0 }}>
         {syncError && <div role="alert" style={{ margin: "16px 16px 0", padding: "10px 14px", borderRadius: "var(--radius-sm)", background: "var(--red-100)", color: "var(--red-600)", font: "var(--type-table)" }}>Sync problem: {syncError} — showing the latest data from the database.</div>}
-        {Page ? <Page /> : <main style={{ padding: 40, color: "var(--text-on-dark-muted)", font: "var(--type-body)" }}>{page} — coming soon.</main>}
+        {Page ? <Page go={setPage} /> : <main style={{ padding: 40, color: "var(--text-on-dark-muted)", font: "var(--type-body)" }}>{page} — coming soon.</main>}
       </div>
     </div>
   );

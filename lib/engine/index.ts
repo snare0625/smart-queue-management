@@ -5,3 +5,4 @@ export * from "./assign";
 export * from "./lifecycle";
 export * from "./learning";
 export * from "./publicView";
+export * from "./simulate";

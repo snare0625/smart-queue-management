@@ -1,4 +1,4 @@
-import type { Service } from "./types";
+import type { Service, Staff } from "./types";
 
 // Every weight is expressed in "minutes of waiting" so the numbers are easy to reason about:
 // a boost of 60 means "treat this customer as if they had already waited an extra hour".
@@ -25,3 +25,11 @@ export const SERVICES: Service[] = [
   { id: "followup", name: "Follow-up", category: "Follow-up", durationMin: 15 },
 ];
 export const serviceById = (id: string) => SERVICES.find((s) => s.id === id) ?? SERVICES[0];
+
+/** The clinic's staff and what each is qualified for (used by the live demo seed and the simulator). */
+export const ROSTER: Staff[] = [
+  { id: "patel", name: "Dr. Patel", serviceIds: ["consult", "urgent-consult", "assessment", "followup"], avatar: "/assets/avatars/dr-patel.png" },
+  { id: "evans", name: "Nurse Evans", serviceIds: ["blood", "general"], avatar: "/assets/avatars/nurse-evans.png" },
+  { id: "kim", name: "Dr. Kim", serviceIds: ["consult", "urgent-consult", "general"], avatar: "/assets/avatars/dr-kim.png" },
+  { id: "wright", name: "Nurse Wright", serviceIds: ["blood"], avatar: "/assets/avatars/nurse-wright.png" },
+];

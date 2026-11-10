@@ -17,7 +17,7 @@ import { useQueue } from "./QueueProvider";
 
 const NAMES = ["Ava N.", "Liam K.", "Mia D.", "Ethan B.", "Zoe P.", "Lucas M.", "Chloe T.", "Owen S."];
 
-export function LiveQueue() {
+export function LiveQueue({ go }: { go?: (page: string) => void }) {
   const { ready, now, state, dispatch, plan, learned, fastForward, nextTicket } = useQueue();
   const { staff, history } = state;
   const next = nextUp(plan);
@@ -93,7 +93,7 @@ export function LiveQueue() {
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,0.75fr) minmax(0,1fr)", gap: 12 }}>
         <QueuePrediction />
         <ServiceDistribution />
-        <SimulationResults />
+        <SimulationResults onOpen={() => go?.("Simulation")} />
       </div>
     </main>
   );

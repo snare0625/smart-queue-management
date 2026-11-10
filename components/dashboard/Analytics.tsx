@@ -1,7 +1,9 @@
+"use client";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Panel } from "@/components/ui/Panel";
 import { DonutChart } from "@/components/ui/DonutChart";
 import { Delta } from "@/components/ui/Delta";
-import type { CSSProperties, ReactNode } from "react";
+import { compareMany, type Policy, type SimMetrics } from "@/lib/engine";
 const Dot = ({ c }: { c: string }) => <span style={{ width: 9, height: 9, borderRadius: 9, background: c, display: "inline-block" }} />;
 export function QueuePrediction() {
   const P = "M30,92 C55,82 70,55 85,58 S105,90 115,87 S140,90 150,80 S185,48 200,52 S250,66 270,71 S310,84 335,86";
@@ -33,11 +35,28 @@ export function ServiceDistribution() {
     </Panel>
   );
 }
-export function SimulationResults() {
-  const rows: [string, string, string, ReactNode][] = [["Average Wait Time", "34 min", "18 min", <Delta key="a" value="47%" pill />], ["Longest Wait", "112 min", "54 min", <Delta key="b" value="52%" />], ["Customers Served", "28", "28", "–"], ["Staff Utilisation", "62%", "87%", <Delta key="c" value="25%" direction="up" />]];
+// Real numbers: 20 simulated busy days (100 customers each), averaged — the same comparison the Simulation page runs.
+const change = (fifo: number, smart: number, higherIsBetter = false): ReactNode => {
+  if (Math.round(fifo) === Math.round(smart) || fifo === 0) return "–";
+  const pct = Math.round((Math.abs(smart - fifo) / fifo) * 100);
+  const better = higherIsBetter ? smart > fifo : smart < fifo;
+  return <Delta value={`${pct}%`} direction={smart < fifo ? "down" : "up"} good={better} />;
+};
+let cached: Record<Policy, SimMetrics> | null = null; // ~1 s of work: do it once per session, after first paint
+export function SimulationResults({ onOpen }: { onOpen?: () => void }) {
+  const [m, setM] = useState(cached);
+  useEffect(() => { if (!cached) { const t = setTimeout(() => setM((cached = compareMany(20, 100))), 300); return () => clearTimeout(t); } }, []);
+  if (!m) return <Panel title="Simulation Results (20 busy days)"><p style={{ margin: 0, font: "var(--type-table)", color: "var(--text-secondary)" }}>Simulating 20 days…</p></Panel>;
+  const r =(v: number | null, unit = " min") => (v == null ? "–" : `${Math.round(v)}${unit}`);
+  const rows: [string, string, string, ReactNode][] = [
+    ["Urgent cases' avg wait", r(m.fifo.urgentAvgWait), r(m.smart.urgentAvgWait), change(m.fifo.urgentAvgWait ?? 0, m.smart.urgentAvgWait ?? 0)],
+    ["Longest Wait", r(m.fifo.maxWait), r(m.smart.maxWait), change(m.fifo.maxWait, m.smart.maxWait)],
+    ["Appointments on time", r(m.fifo.apptOnTimePct, "%"), r(m.smart.apptOnTimePct, "%"), change(m.fifo.apptOnTimePct ?? 0, m.smart.apptOnTimePct ?? 0, true)],
+    ["Average Wait Time", r(m.fifo.avgWait), r(m.smart.avgWait), change(m.fifo.avgWait, m.smart.avgWait)],
+  ];
   const c: CSSProperties = { padding: "7px 10px", borderBottom: "1px solid var(--border-card)", font: "var(--type-table)" };
   return (
-    <Panel title="Simulation Results (Today)">
+    <Panel title="Simulation Results (20 busy days)" actionLabel={onOpen ? "Explore" : undefined} onAction={onOpen}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead><tr style={{ background: "var(--surface-card-subtle)" }}>{["Algorithm Comparison", "FIFO", "Smart Queue", ""].map((h, i) => <th key={i} style={{ ...c, textAlign: "left", fontWeight: 500 }}>{h}</th>)}</tr></thead>
         <tbody>{rows.map((r) => <tr key={r[0]}><td style={c}>{r[0]}</td><td style={c}>{r[1]}</td><td style={{ ...c, color: "var(--green-700)", fontWeight: 600 }}>{r[2]}</td><td style={c}>{r[3]}</td></tr>)}</tbody>

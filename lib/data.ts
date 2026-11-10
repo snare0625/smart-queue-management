@@ -1,4 +1,4 @@
-import { fmtTime, isOverrunning, serviceById, staffStatus, type Assignment, type Customer, type Category, type Staff, type QueueState, type StaffStatus as EngineStaffStatus, type Visit } from "@/lib/engine";
+import { ROSTER, fmtTime, isOverrunning, serviceById, staffStatus, type Assignment, type Customer, type Category, type Staff, type QueueState, type StaffStatus as EngineStaffStatus, type Visit } from "@/lib/engine";
 
 export type Priority = "urgent" | "priority" | "appointment" | "normal";
 export type Stripe = "urgent" | "priority" | "appointment" | "general" | "teal" | "none";
@@ -38,14 +38,13 @@ export const FILTERS = ["All", "General", "Consultation", "Test", "Follow-up"] a
 
 const servingAs = (customer: Customer, now: number, startedAgo: number, endsIn: number) =>
   ({ customer, serviceId: customer.serviceId, startedAt: now - startedAgo * 60_000, expectedEnd: now + endsIn * 60_000 });
-export const seedStaff = (now: number): Staff[] => [
-  { id: "patel", name: "Dr. Patel", serviceIds: ["consult", "urgent-consult", "assessment", "followup"], avatar: "/assets/avatars/dr-patel.png",
-    serving: servingAs({ id: "A014", name: "Grace H.", serviceId: "urgent-consult", priority: "urgent", arrivedAt: now - 30 * 60_000 }, now, 12, 3) },
-  { id: "evans", name: "Nurse Evans", serviceIds: ["blood", "general"], avatar: "/assets/avatars/nurse-evans.png" },
-  { id: "kim", name: "Dr. Kim", serviceIds: ["consult", "urgent-consult", "general"], avatar: "/assets/avatars/dr-kim.png",
-    serving: servingAs({ id: "A013", name: "Tom V.", serviceId: "consult", priority: "normal", arrivedAt: now - 35 * 60_000 }, now, 10, 10) },
-  { id: "wright", name: "Nurse Wright", serviceIds: ["blood"], avatar: "/assets/avatars/nurse-wright.png", breakUntil: now + 6 * 60_000 },
-];
+// The roster (who can do what) lives in the engine; the demo adds who's mid-visit or on a break right now.
+export const seedStaff = (now: number): Staff[] => ROSTER.map((s) => {
+  if (s.id === "patel") return { ...s, serving: servingAs({ id: "A014", name: "Grace H.", serviceId: "urgent-consult", priority: "urgent", arrivedAt: now - 30 * 60_000 }, now, 12, 3) };
+  if (s.id === "kim") return { ...s, serving: servingAs({ id: "A013", name: "Tom V.", serviceId: "consult", priority: "normal", arrivedAt: now - 35 * 60_000 }, now, 10, 10) };
+  if (s.id === "wright") return { ...s, breakUntil: now + 6 * 60_000 };
+  return { ...s };
+});
 
 // Visits completed earlier this morning: [serviceId, staffId, actual minutes, waited minutes]. Blood tests and consultations
 // have been running long, so the learned estimates start above the configured ones.
