@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { fmtTime, type PublicView } from "@/lib/engine";
 import { subscribeDisplay } from "@/lib/sync/displayChannel";
+import { getSupabase } from "@/lib/db/client";
 
 const STALE_MS = 45_000; // the dashboard re-sends every 15 s; three missed updates = show "reconnecting"
 
@@ -15,12 +16,12 @@ export function DisplayScreen() {
   const [fresh, setFresh] = useState<string[]>([]); // tickets called since the last update → flash them
   const prevServing = useRef<string[]>([]);
 
-  useEffect(() => subscribeDisplay((v) => {
+  useEffect(() => subscribeDisplay(getSupabase(), (v, publishedAt) => {
     const serving = v.nowServing.map((s) => s.ticket);
     setFresh(prevServing.current.length ? serving.filter((t) => !prevServing.current.includes(t)) : []);
     prevServing.current = serving;
     setView(v);
-    setReceivedAt(Date.now());
+    setReceivedAt(publishedAt);
   }), []);
   useEffect(() => { setClock(Date.now()); const t = setInterval(() => setClock(Date.now()), 5000); return () => clearInterval(t); }, []);
 

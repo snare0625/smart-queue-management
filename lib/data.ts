@@ -1,4 +1,4 @@
-import { fmtTime, isOverrunning, serviceById, staffStatus, type Assignment, type Customer, type Category, type Staff, type StaffStatus as EngineStaffStatus, type Visit } from "@/lib/engine";
+import { fmtTime, isOverrunning, serviceById, staffStatus, type Assignment, type Customer, type Category, type Staff, type QueueState, type StaffStatus as EngineStaffStatus, type Visit } from "@/lib/engine";
 
 export type Priority = "urgent" | "priority" | "appointment" | "normal";
 export type Stripe = "urgent" | "priority" | "appointment" | "general" | "teal" | "none";
@@ -60,6 +60,9 @@ export const seedHistory = (now: number): Visit[] => earlier.map(([serviceId, st
   const customer: Customer = { id: "A" + String(i + 1).padStart(3, "0"), name: "Earlier visitor", serviceId, priority: "normal", arrivedAt: startedAt - waited * 60_000 };
   return { customer, serviceId, staffId, outcome: "completed", startedAt, endedAt, waitMin: waited, serviceMin: took };
 });
+
+/** A complete demo day: customers waiting, two being served, one on break, and this morning's history. */
+export const seedState = (now: number): QueueState => ({ waiting: seedCustomers(now), staff: seedStaff(now), history: seedHistory(now) });
 
 export type StaffStatus = EngineStaffStatus;
 export function toStaffRow(s: Staff, plan: Assignment[], now: number) {
