@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "check:rls": "node --env-file=.env.local scripts/check-rls.mjs"
+    "check:rls": "node --env-file-if-exists=.env.local scripts/check-rls.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
