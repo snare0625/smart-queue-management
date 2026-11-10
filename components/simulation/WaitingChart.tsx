@@ -1,15 +1,17 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { MIN, fmtTime, type Policy, type SimResult } from "@/lib/engine";
+import { monotonePath, niceScale, tooltipStyle } from "@/components/ui/chart";
 
-// Validated with the dataviz palette checker on the white card surface (all pairs pass; identity is also carried by labels).
-export const POLICY_COLOR: Record<Policy, string> = { smart: "#1D74FD", strict: "#D9620B", fifo: "#239481" };
+// Validated series colours (docs/design-system/CHART-PALETTE.md). Lines are also direct-labelled, so colour is never the only cue.
+export const POLICY_COLOR: Record<Policy, string> = { smart: "var(--series-1)", strict: "var(--series-2)", fifo: "var(--series-3)" };
 export const POLICY_SHORT: Record<Policy, string> = { fifo: "FIFO", strict: "Strict priority", smart: "Smart queue" };
-const ORDER: Policy[] = ["smart", "strict", "fifo"];
-const PAD = { l: 34, r: 92, t: 14, b: 26 };
-const H = 240;
+const ORDER: Policy[] = ["fifo", "strict", "smart"]; // smart drawn last = on top
+const PAD = { l: 34, r: 24, t: 18, b: 28 };
+const H = 260;
+const SAMPLE = 5; // minutes between curve points
 
-/** People waiting, minute by minute, for each policy. `cursor` = playback position (minutes after opening). */
+/** People waiting through the day for each policy. `cursor` = playback position (minutes after opening). */
 export function WaitingChart({ results, open, cursor }: { results: Record<Policy, SimResult>; open: number; cursor: number | null }) {
   const box = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(800);
@@ -21,21 +23,32 @@ export function WaitingChart({ results, open, cursor }: { results: Record<Policy
   }, []);
 
   const minutes = Math.max(...ORDER.map((p) => results[p].timeline.length)) - 1;
-  const peak = Math.max(4, ...ORDER.map((p) => results[p].metrics.peakQueue));
-  const step = peak <= 8 ? 2 : peak <= 20 ? 5 : 10;
-  const yMax = Math.ceil(peak / step) * step;
+  const { top, step } = niceScale(Math.max(...ORDER.map((p) => results[p].metrics.peakQueue)));
   const x = (m: number) => PAD.l + (m / minutes) * (w - PAD.l - PAD.r);
-  const y = (v: number) => PAD.t + (1 - v / yMax) * (H - PAD.t - PAD.b);
+  const y = (v: number) => PAD.t + (1 - v / top) * (H - PAD.t - PAD.b);
   const at = (p: Policy, m: number) => results[p].timeline[Math.min(m, results[p].timeline.length - 1)]?.waiting ?? 0;
-  const path = (p: Policy) => results[p].timeline.map((pt, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(pt.waiting).toFixed(1)}`).join("");
+  const samples = (p: Policy) => {
+    const last = results[p].timeline.length - 1;
+    const ms = Array.from({ length: Math.floor(last / SAMPLE) + 1 }, (_, i) => i * SAMPLE);
+    if (ms[ms.length - 1] !== last) ms.push(last);
+    return ms.map((m) => [x(m), y(at(p, m))] as [number, number]);
+  };
+  const curves = Object.fromEntries(ORDER.map((p) => [p, samples(p)])) as Record<Policy, [number, number][]>;
+  // dot sits on the drawn curve (linear between samples); the tooltip shows the exact count for that minute
+  const onCurve = (p: Policy, m: number) => {
+    const pts = curves[p], px = x(m);
+    const i = Math.max(0, pts.findIndex((pt) => pt[0] >= px) - 1);
+    const [a, b] = [pts[i], pts[Math.min(i + 1, pts.length - 1)]];
+    return b[0] === a[0] ? a[1] : a[1] + ((px - a[0]) / (b[0] - a[0])) * (b[1] - a[1]);
+  };
 
-  // Direct labels sit at each line's peak, nudged apart so they never overlap.
+  // Direct labels at each line's peak, nudged apart so they never overlap.
   const labels = ORDER.map((p) => {
     const tl = results[p].timeline;
     const i = tl.reduce((best, pt, j) => (pt.waiting > tl[best].waiting ? j : best), 0);
-    return { p, x: x(i), y: y(tl[i].waiting) - 8 };
+    return { p, x: Math.min(Math.max(x(i), PAD.l + 40), w - PAD.r - 50), y: y(tl[i].waiting) - 10 };
   }).sort((a, b) => a.y - b.y);
-  for (let i = 1; i < labels.length; i++) if (Math.abs(labels[i].x - labels[i - 1].x) < 110 && labels[i].y - labels[i - 1].y < 14) labels[i].y = labels[i - 1].y + 14;
+  for (let i = 1; i < labels.length; i++) if (Math.abs(labels[i].x - labels[i - 1].x) < 120 && labels[i].y - labels[i - 1].y < 15) labels[i].y = labels[i - 1].y + 15;
 
   const focus = hover ?? cursor;
   const hours = Array.from({ length: Math.floor(minutes / 60) + 1 }, (_, i) => i * 60);
@@ -45,30 +58,36 @@ export function WaitingChart({ results, open, cursor }: { results: Record<Policy
       <svg width={w} height={H} role="img" aria-label="Number of people waiting through the day for each queue algorithm"
         onMouseMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); const m = Math.round(((e.clientX - r.left - PAD.l) / (w - PAD.l - PAD.r)) * minutes); setHover(m >= 0 && m <= minutes ? m : null); }}
         onMouseLeave={() => setHover(null)} style={{ display: "block", cursor: "crosshair" }}>
-        {Array.from({ length: yMax / step + 1 }, (_, i) => i * step).map((v) => (
+        <defs>
+          <linearGradient id="smart-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="var(--series-1)" stopOpacity=".32" /><stop offset="1" stopColor="var(--series-1)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {Array.from({ length: top / step + 1 }, (_, i) => i * step).map((v) => (
           <g key={v}>
-            <line x1={PAD.l} x2={w - PAD.r} y1={y(v)} y2={y(v)} stroke="var(--gray-150)" />
-            <text x={PAD.l - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill="var(--text-muted)">{v}</text>
+            <line x1={PAD.l} x2={w - PAD.r} y1={y(v)} y2={y(v)} stroke="var(--grid-line)" strokeDasharray={v === 0 ? undefined : "3 4"} />
+            <text x={PAD.l - 10} y={y(v) + 4} textAnchor="end" fontSize="11" fill="var(--label)">{v}</text>
           </g>
         ))}
-        {hours.map((m) => <text key={m} x={x(m)} y={H - 6} textAnchor="middle" fontSize="11" fill="var(--text-muted)">{fmtTime(open + m * MIN)}</text>)}
-        {ORDER.map((p) => <path key={p} d={path(p)} fill="none" stroke={POLICY_COLOR[p]} strokeWidth={2} strokeLinejoin="round" />)}
-        {labels.map((l) => <text key={l.p} x={Math.min(l.x, w - PAD.r - 4)} y={l.y} textAnchor="middle" fontSize="11" fontWeight={600} fill="var(--text-secondary)">{POLICY_SHORT[l.p]}</text>)}
+        {hours.map((m) => <text key={m} x={x(m)} y={H - 8} textAnchor="middle" fontSize="11" fill="var(--label)">{fmtTime(open + m * MIN)}</text>)}
+        <path d={`${monotonePath(curves.smart)}L${curves.smart.at(-1)![0]},${y(0)}L${curves.smart[0][0]},${y(0)}Z`} fill="url(#smart-fill)" />
+        {ORDER.map((p) => <path key={p} d={monotonePath(curves[p])} fill="none" stroke={POLICY_COLOR[p]} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />)}
+        {labels.map((l) => <text key={l.p} x={l.x} y={l.y} textAnchor="middle" fontSize="12" fontWeight={500} fill="var(--ink-2)">{POLICY_SHORT[l.p]}</text>)}
         {focus != null && (
           <g>
-            <line x1={x(focus)} x2={x(focus)} y1={PAD.t} y2={H - PAD.b} stroke="var(--gray-600)" strokeDasharray="3 3" />
-            {ORDER.map((p) => <circle key={p} cx={x(focus)} cy={y(at(p, focus))} r={4.5} fill={POLICY_COLOR[p]} stroke="var(--surface-card)" strokeWidth={2} />)}
+            <line x1={x(focus)} x2={x(focus)} y1={PAD.t} y2={H - PAD.b} stroke="var(--label)" strokeDasharray="3 3" />
+            {ORDER.map((p) => <circle key={p} cx={x(focus)} cy={onCurve(p, focus)} r={4.5} fill="#fff" stroke={POLICY_COLOR[p]} strokeWidth={2} />)}
           </g>
         )}
       </svg>
       {hover != null && (
-        <div role="tooltip" style={{ position: "absolute", top: 8, left: Math.min(x(hover) + 12, w - 170), pointerEvents: "none", padding: "8px 10px", background: "var(--surface-card)", border: "1px solid var(--border-card)", borderRadius: "var(--radius-sm)", boxShadow: "0 6px 18px rgba(10,20,30,.18)", font: "var(--type-label)", color: "var(--text-primary)", minWidth: 150 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>{fmtTime(open + hover * MIN)} · waiting</div>
-          {ORDER.map((p) => (
-            <div key={p} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 10, height: 2, background: POLICY_COLOR[p] }} />
-              <span style={{ flex: 1, color: "var(--text-secondary)" }}>{POLICY_SHORT[p]}</span>
-              <b style={{ fontWeight: 600 }}>{at(p, hover)}</b>
+        <div role="tooltip" style={{ ...tooltipStyle, position: "absolute", top: 8, left: Math.min(x(hover) + 14, w - 180) }}>
+          <div style={{ color: "#B5B5BA", marginBottom: 4 }}>{fmtTime(open + hover * MIN)} · people waiting</div>
+          {[...ORDER].reverse().map((p) => (
+            <div key={p} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 10, height: 2, borderRadius: 2, background: POLICY_COLOR[p] }} />
+              <span style={{ flex: 1 }}>{POLICY_SHORT[p]}</span>
+              <span>{at(p, hover)}</span>
             </div>
           ))}
         </div>

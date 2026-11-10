@@ -1,10 +1,18 @@
 "use client";
 import { Panel } from "@/components/ui/Panel";
-import { th, td } from "@/components/ui/QueueTable";
+import { Badge } from "@/components/ui/Badge";
 import { LEARNING, SERVICES, fmtTime, serviceById } from "@/lib/engine";
 import { useQueue } from "./QueueProvider";
 
-const muted = { color: "var(--text-secondary)" };
+// Slower than configured is a warning, faster is good — always said in words, not just colour.
+function Drift({ pct }: { pct: number }) {
+  if (Math.abs(pct) < 1) return <Badge tone="neutral">On estimate</Badge>;
+  return pct > 0 ? <Badge tone="warning">{pct}% slower</Badge> : <Badge tone="positive">{-pct}% faster</Badge>;
+}
+function VsConfigured({ diff }: { diff: number }) {
+  if (diff === 0) return <Badge tone="neutral">On time</Badge>;
+  return diff > 0 ? <Badge tone="warning">{diff} min over</Badge> : <Badge tone="positive">{-diff} min under</Badge>;
+}
 
 export function ServicesPage() {
   const { ready, state, learned } = useQueue();
@@ -14,54 +22,53 @@ export function ServicesPage() {
 
   return (
     <main style={{ display: "flex", flexDirection: "column", gap: "var(--gap)", minWidth: 0 }}>
-      <Panel title="Service Times" size="lg">
-        <p style={{ margin: 0, font: "var(--type-table)", ...muted }}>
-          Estimates start at the configured duration and learn from every completed visit: each one moves the estimate {LEARNING.alpha * 100}% of the way towards
-          what actually happened (an exponentially weighted moving average). Outliers are clamped to {LEARNING.clampLow}×–{LEARNING.clampHigh}× first.
+      <Panel title="Service times" meta="Learned from completed visits">
+        <p style={{ margin: 0, font: "var(--type-body)", color: "var(--ink-2)", maxWidth: 860 }}>
+          Each estimate starts at the configured duration and learns from every completed visit: it moves {LEARNING.alpha * 100}% of the way towards what
+          actually happened (an exponentially weighted moving average). A single extreme visit is first limited to {LEARNING.clampLow}×–{LEARNING.clampHigh}× the current estimate.
         </p>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead><tr>{["Service", "Category", "Configured", "Learned estimate", "Change", "Visits learned from", "Last actual"].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
-          <tbody>
-            {SERVICES.map((s) => {
-              const l = learned[s.id];
-              const delta = l.estimateMin - l.defaultMin;
-              const pct = Math.round((delta / l.defaultMin) * 100);
-              return (
-                <tr key={s.id}>
-                  <td style={{ ...td, fontWeight: 500 }}>{s.name}</td>
-                  <td style={{ ...td, ...muted }}>{s.category}</td>
-                  <td style={td}>{l.defaultMin} min</td>
-                  <td style={{ ...td, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{l.estimateMin.toFixed(1)} min</td>
-                  <td style={{ ...td, color: Math.abs(pct) < 1 ? "var(--text-muted)" : delta > 0 ? "var(--red-600)" : "var(--green-700)" }}>{Math.abs(pct) < 1 ? "—" : `${delta > 0 ? "▲" : "▼"} ${Math.abs(pct)}%`}</td>
-                  <td style={td}>{l.samples}</td>
-                  <td style={{ ...td, ...muted }}>{l.lastMin == null ? "–" : `${Math.round(l.lastMin)} min`}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </Panel>
-      <Panel title="Recently Completed">
-        {recent.length === 0 ? <p style={{ margin: 0, font: "var(--type-table)", ...muted }}>No completed visits yet.</p> : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr>{["Ticket", "Service", "Staff", "Finished", "Waited", "Took", "vs configured"].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
+        <div style={{ overflowX: "auto" }}>
+          <table className="pc-table">
+            <thead><tr>{["Service", "Category", "Configured", "Learned estimate", "Drift", "Visits learned from", "Last actual"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
             <tbody>
-              {recent.map((v) => {
-                const diff = Math.round(v.serviceMin! - serviceById(v.serviceId).durationMin);
+              {SERVICES.map((s) => {
+                const l = learned[s.id];
                 return (
-                  <tr key={v.customer.id + v.endedAt}>
-                    <td style={{ ...td, fontWeight: 500 }}>{v.customer.id}</td>
-                    <td style={td}>{serviceById(v.serviceId).name}</td>
-                    <td style={{ ...td, ...muted }}>{staffName(v.staffId)}</td>
-                    <td style={td}>{fmtTime(v.endedAt)}</td>
-                    <td style={td}>{Math.round(v.waitMin)} min</td>
-                    <td style={td}>{Math.round(v.serviceMin!)} min</td>
-                    <td style={{ ...td, color: diff > 0 ? "var(--red-600)" : diff < 0 ? "var(--green-700)" : "var(--text-muted)" }}>{diff === 0 ? "on time" : `${diff > 0 ? "+" : ""}${diff} min`}</td>
+                  <tr key={s.id}>
+                    <td style={{ color: "var(--ink)", fontWeight: 500 }}>{s.name}</td>
+                    <td>{s.category}</td>
+                    <td>{l.defaultMin} min</td>
+                    <td style={{ color: "var(--ink)" }}>{l.estimateMin.toFixed(1)} min</td>
+                    <td><Drift pct={Math.round(((l.estimateMin - l.defaultMin) / l.defaultMin) * 100)} /></td>
+                    <td>{l.samples}</td>
+                    <td>{l.lastMin == null ? "–" : `${Math.round(l.lastMin)} min`}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+        </div>
+      </Panel>
+      <Panel title="Recently completed" meta={`Last ${recent.length}`}>
+        {recent.length === 0 ? <div className="pc-inset" style={{ font: "var(--type-control)", color: "var(--label)" }}>No completed visits yet. They appear here as staff mark visits Done.</div> : (
+          <div style={{ overflowX: "auto" }}>
+            <table className="pc-table">
+              <thead><tr>{["Ticket", "Service", "Staff", "Finished", "Waited", "Took", "vs configured"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
+              <tbody>
+                {recent.map((v) => (
+                  <tr key={v.customer.id + v.endedAt}>
+                    <td style={{ color: "var(--ink)", fontWeight: 500 }}>{v.customer.id}</td>
+                    <td>{serviceById(v.serviceId).name}</td>
+                    <td>{staffName(v.staffId)}</td>
+                    <td>{fmtTime(v.endedAt)}</td>
+                    <td>{Math.round(v.waitMin)} min</td>
+                    <td style={{ color: "var(--ink)" }}>{Math.round(v.serviceMin!)} min</td>
+                    <td><VsConfigured diff={Math.round(v.serviceMin! - serviceById(v.serviceId).durationMin)} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Panel>
     </main>

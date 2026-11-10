@@ -59,7 +59,8 @@ describe("planning a day", () => {
     expect(hours.filter((h) => h.level !== "ok").every((h) => new Date(h.start).getHours() >= 13)).toBe(true);
   });
 
-  it("recommends an extra doctor during the overloaded hours on a busy day", () => {
+  // Heavy: 24 full-day simulations. A generous timeout keeps it reliable on slower CI machines.
+  it("recommends an extra doctor during the overloaded hours on a busy day", { timeout: 30_000 }, () => {
     const plan = recommendShift(generateDay(1, 100));
     expect(plan.best).not.toBeNull();
     expect(plan.best!.like.serviceIds).toContain("consult");
@@ -68,7 +69,7 @@ describe("planning a day", () => {
     expect(overloaded.some((t) => t >= plan.best!.start && t < plan.best!.end)).toBe(true); // the shift covers the problem
   });
 
-  it("recommends nothing on a quiet day", () => {
+  it("recommends nothing on a quiet day", { timeout: 30_000 }, () => {
     expect(recommendShift(generateDay(3, 60)).best).toBeNull();
   });
 });

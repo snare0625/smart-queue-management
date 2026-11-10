@@ -1,22 +1,19 @@
 "use client";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle2, UserPlus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { UserPlus } from "lucide-react";
 import { Panel } from "@/components/ui/Panel";
 import { Button } from "@/components/ui/Button";
-import { th, td } from "@/components/ui/QueueTable";
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { IconChip } from "@/components/ui/StatCard";
 import { fmtTime, hourlyLoad, recommendShift, simulateDay, type DayPlan, type LoadLevel, type ShiftPlan, type SimMetrics, type Weights } from "@/lib/engine";
 
-const LOOK: Record<LoadLevel, { bg: string; fg: string; Icon: typeof AlertCircle; word: string }> = {
-  ok: { bg: "var(--green-100)", fg: "var(--green-700)", Icon: CheckCircle2, word: "OK" },
-  busy: { bg: "var(--orange-100)", fg: "var(--orange-700)", Icon: AlertCircle, word: "Busy" },
-  overloaded: { bg: "var(--red-100)", fg: "var(--red-600)", Icon: AlertTriangle, word: "Overloaded" },
-};
+// Status is always a pill with a word.
+const LOOK: Record<LoadLevel, [BadgeTone, string]> = { ok: ["positive", "OK"], busy: ["warning", "Busy"], overloaded: ["negative", "Overloaded"] };
 const m = (v: number) => `${Math.round(v)} min`;
-const field: CSSProperties = { height: 32, padding: "0 8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-strong)", font: "var(--type-table)", background: "var(--surface-card)" };
 
 function Change({ before, after, unit = " min" }: { before: number; after: number; unit?: string }) {
   const d = Math.round(after) - Math.round(before);
-  return <>{Math.round(before)}{unit} → <b>{Math.round(after)}{unit}</b>{d !== 0 && <span style={{ color: d < 0 ? "var(--green-700)" : "var(--red-600)" }}> ({d > 0 ? "+" : ""}{d})</span>}</>;
+  return <>{Math.round(before)}{unit} → <strong style={{ color: "var(--ink)" }}>{Math.round(after)}{unit}</strong>{d !== 0 && <span style={{ color: d < 0 ? "var(--positive)" : "var(--negative)" }}> ({d > 0 ? "+" : "−"}{Math.abs(d)})</span>}</>;
 }
 
 /** WHEN is the day overloaded (smart queue, hour by hour), and which extra shift would help most? */
@@ -28,44 +25,45 @@ export function StaffingPanel({ day, weights }: { day: DayPlan; weights: Weights
   useEffect(() => setPlan(null), [day, weights, shiftHours]);
   const run = () => { setRunning(true); setTimeout(() => { setPlan(recommendShift(day, weights, shiftHours)); setRunning(false); }, 30); };
   const row = (label: string, k: keyof SimMetrics, base: SimMetrics, after: SimMetrics, unit = " min") => (base[k] == null || after[k] == null) ? null :
-    <tr key={k}><td style={{ ...td, color: "var(--text-secondary)" }}>{label}</td><td style={td}><Change before={base[k] as number} after={after[k] as number} unit={unit} /></td></tr>;
+    <tr key={k}><td>{label}</td><td><Change before={base[k] as number} after={after[k] as number} unit={unit} /></td></tr>;
 
   return (
-    <Panel title="Staffing: when is the day overloaded?" action={
+    <Panel title="Staffing" meta="When is the day overloaded, and what would fix it?" action={
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <label style={{ font: "var(--type-label)", color: "var(--text-secondary)" }}>Extra shift&nbsp;
-          <select value={shiftHours} onChange={(e) => setShiftHours(Number(e.target.value))} style={field}>{[2, 3, 4, 5, 6].map((h) => <option key={h} value={h}>{h} hours</option>)}</select>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, font: "var(--type-label)", color: "var(--label)" }}>Extra shift
+          <select value={shiftHours} onChange={(e) => setShiftHours(Number(e.target.value))} className="pc-field">{[2, 3, 4, 5, 6].map((h) => <option key={h} value={h}>{h} hours</option>)}</select>
         </label>
-        <Button icon={UserPlus} disabled={running} onClick={run}>{running ? "Testing every option…" : "Find the best extra shift"}</Button>
+        <Button size="sm" icon={UserPlus} disabled={running} onClick={run}>{running ? "Testing every option…" : "Find the best extra shift"}</Button>
       </div>
     }>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${hourly.length}, minmax(0,1fr))`, gap: 6 }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${hourly.length}, minmax(0,1fr))`, gap: 8 }}>
         {hourly.map((h) => {
-          const { bg, fg, Icon, word } = LOOK[h.level];
+          const [tone, word] = LOOK[h.level];
           return (
-            <div key={h.hour} title={`${h.arrivals} arrived; they waited ${h.avgWaitMin == null ? "–" : m(h.avgWaitMin)} on average; up to ${h.peakWaiting} waiting at once`}
-              style={{ padding: "8px 6px", borderRadius: "var(--radius-sm)", background: bg, display: "flex", flexDirection: "column", gap: 2, alignItems: "center", font: "var(--type-label)" }}>
-              <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{fmtTime(h.start)}</span>
-              <span style={{ display: "flex", alignItems: "center", gap: 4, color: fg, fontWeight: 600 }}><Icon size={12} />{word}</span>
-              <span style={{ color: "var(--text-secondary)" }}>{h.avgWaitMin == null ? "–" : m(h.avgWaitMin)} avg</span>
-              <span style={{ color: "var(--text-muted)" }}>{h.arrivals} arrived</span>
+            <div key={h.hour} className="pc-inset" title={`${h.arrivals} arrived; they waited ${h.avgWaitMin == null ? "–" : m(h.avgWaitMin)} on average; up to ${h.peakWaiting} waiting at once`}
+              style={{ padding: "10px 8px", display: "flex", flexDirection: "column", gap: 6, alignItems: "center", textAlign: "center" }}>
+              <span style={{ font: "var(--type-body)", color: "var(--ink)" }}>{fmtTime(h.start)}</span>
+              <Badge tone={tone}>{word}</Badge>
+              <span style={{ font: "var(--type-label)", color: "var(--ink-2)" }}>{h.avgWaitMin == null ? "–" : m(h.avgWaitMin)} avg</span>
+              <span style={{ font: "var(--type-label)", color: "var(--label)" }}>{h.arrivals} arrived</span>
             </div>
           );
         })}
       </div>
-      <p style={{ margin: 0, font: "var(--type-label)", color: "var(--text-muted)" }}>Average wait of the people who ARRIVED in each hour, using the smart queue. Busy &gt; 30 min, overloaded &gt; 60 min.</p>
+      <p style={{ margin: 0, font: "var(--type-label)", color: "var(--label)" }}>Average wait of the people who arrived in each hour, using the smart queue. Busy over 30 min, overloaded over 60 min.</p>
 
       {plan && (plan.best ? (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 16, alignItems: "start" }}>
-          <div style={{ display: "flex", gap: 10, padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--callout-bg)", font: "var(--type-table)" }}>
-            <UserPlus size={18} color="var(--accent)" style={{ flexShrink: 0 }} />
-            <div>
-              <b>Recommendation:</b> bring in someone like <b>{plan.best.like.name}</b> ({plan.best.skills}) from <b>{fmtTime(plan.best.start)} to {fmtTime(plan.best.end)}</b>.
-              <div style={{ color: "var(--text-secondary)", marginTop: 4 }}>Chosen from {plan.options.length} options by re-simulating the whole day for each one.</div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: "var(--gap)", alignItems: "start" }}>
+          <div className="pc-inset" style={{ display: "flex", gap: 12, font: "var(--type-body)", color: "var(--ink-2)" }}>
+            <IconChip icon={UserPlus} tint="brand" />
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ color: "var(--ink)", fontWeight: 500 }}>Recommendation</span>
+              <span>Bring in someone like <strong style={{ color: "var(--ink)" }}>{plan.best.like.name}</strong> ({plan.best.skills}) from <strong style={{ color: "var(--ink)" }}>{fmtTime(plan.best.start)} to {fmtTime(plan.best.end)}</strong>.</span>
+              <span style={{ font: "var(--type-label)", color: "var(--label)" }}>Chosen from {plan.options.length} options by re-simulating the whole day for each one.</span>
             </div>
           </div>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr><th style={th}>With that extra shift</th><th style={th}>Before → after</th></tr></thead>
+          <table className="pc-table">
+            <thead><tr><th>With that extra shift</th><th>Before → after</th></tr></thead>
             <tbody>
               {row("90% of people waited less than", "p90Wait", plan.base, plan.best.metrics)}
               {row("Longest wait", "maxWait", plan.base, plan.best.metrics)}
@@ -74,19 +72,19 @@ export function StaffingPanel({ day, weights }: { day: DayPlan; weights: Weights
               {row("Urgent cases' average wait", "urgentAvgWait", plan.base, plan.best.metrics)}
             </tbody>
           </table>
-          <details style={{ gridColumn: "1 / -1", font: "var(--type-table)" }}>
-            <summary style={{ cursor: "pointer", color: "var(--accent-text)" }}>Show the next best options</summary>
-            <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8 }}>
-              <thead><tr>{["Extra person like", "Shift", "90% waited <", "Longest", "Walked out"].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead>
+          <details style={{ gridColumn: "1 / -1", font: "var(--type-body)" }}>
+            <summary style={{ cursor: "pointer", color: "var(--ink)", textDecoration: "underline", textDecorationColor: "var(--brand)", textUnderlineOffset: 3 }}>Show the next best options</summary>
+            <table className="pc-table" style={{ marginTop: 12 }}>
+              <thead><tr>{["Extra person like", "Shift", "90% waited under", "Longest", "Walked out"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
               <tbody>{plan.options.slice(0, 8).map((o) => (
-                <tr key={o.like.id + o.start}><td style={td}>{o.like.name}</td><td style={td}>{fmtTime(o.start)}–{fmtTime(o.end)}</td><td style={td}>{m(o.metrics.p90Wait)}</td><td style={td}>{m(o.metrics.maxWait)}</td><td style={td}>{o.metrics.walkedOut}</td></tr>
+                <tr key={o.like.id + o.start}><td>{o.like.name}</td><td>{fmtTime(o.start)}–{fmtTime(o.end)}</td><td>{m(o.metrics.p90Wait)}</td><td>{m(o.metrics.maxWait)}</td><td>{o.metrics.walkedOut}</td></tr>
               ))}</tbody>
             </table>
           </details>
         </div>
       ) : (
-        <div style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-table)", color: "var(--text-secondary)" }}>
-          <CheckCircle2 size={16} color="var(--green-700)" /> No extra shift would cut the 90th-percentile wait by 10+ minutes — current staffing copes with this day.
+        <div className="pc-inset" style={{ display: "flex", gap: 10, alignItems: "center", font: "var(--type-body)", color: "var(--ink-2)" }}>
+          <Badge tone="positive">Enough staff</Badge> No extra shift would cut the 90th-percentile wait by 10 minutes or more on this day.
         </div>
       ))}
     </Panel>

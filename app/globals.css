@@ -22,6 +22,9 @@
   --cat-purple:#8C5DF5; --cat-purple-tint:#ECE5F7; --cat-purple-ink:#5B3BB8;
   --cat-amber:#F29E08;  --cat-amber-tint:#F8ECDC;
 
+  /* chart series — validated for colour-vision deficiency (docs/design-system/CHART-PALETTE.md) */
+  --series-1:#D9531F; --series-2:#5B3BB8; --series-3:#3C82F4;
+
   /* type — DM Sans 400/500 only (loaded in app/layout.tsx) */
   --font-sans:var(--font-dm-sans),ui-sans-serif,system-ui,sans-serif;
   --font-mono:ui-monospace,SFMono-Regular,Menlo,monospace;

@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState } from "react";
 import { fmtTime, type PublicView } from "@/lib/engine";
 import { subscribeDisplay } from "@/lib/sync/displayChannel";
@@ -27,48 +26,54 @@ export function DisplayScreen() {
 
   const stale = clock !== null && (!view || clock - receivedAt > STALE_MS);
 
+  const card = { background: "var(--surface)", border: "var(--rim)", borderRadius: "var(--r-card)", boxShadow: "var(--shadow-card)" } as const;
   return (
-    <div style={{ minHeight: "100vh", background: "var(--navy-950)", color: "var(--text-on-dark)", display: "flex", flexDirection: "column", font: "var(--type-body)" }}>
-      <style>{`@keyframes called { 0%,100% { background: var(--green-950) } 50% { background: var(--green-700) } }`}</style>
-      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 40px", borderBottom: "1px solid var(--border-dark)" }}>
-        <img src="/assets/logo-lockup.png" alt="QueuePro" style={{ height: 52 }} />
-        <div style={{ textAlign: "right" }}>
-          <div style={{ font: "600 44px/1 var(--font-sans)" }}>{clock ? fmtTime(view?.generatedAt ?? clock) : "--:--"}</div>
-          <div style={{ font: "500 15px var(--font-sans)", color: stale ? "var(--orange-500)" : "var(--green-500)" }}>{stale ? "● Reconnecting to the front desk…" : "● Live"}</div>
+    <div style={{ minHeight: "100vh", background: "var(--canvas)", color: "var(--ink)", display: "flex", flexDirection: "column" }}>
+      <style>{`@keyframes called { 0%,100% { background: var(--surface) } 50% { background: var(--brand-tint) } }`}</style>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "28px 48px 8px" }}>
+        <div>
+          <div style={{ font: "500 30px/36px var(--font-sans)", letterSpacing: "-0.02em" }}>QueuePro<span style={{ color: "var(--brand)" }}>.</span></div>
+          <div style={{ font: "400 18px/24px var(--font-sans)", color: "var(--label)" }}>Riverside Clinic · waiting room</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <span className="pc-pill" style={{ height: 32, padding: "0 14px", font: "500 16px var(--font-sans)", background: stale ? "var(--warning-bg)" : "var(--positive-bg)", color: stale ? "var(--warning)" : "var(--positive)" }}>
+            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 9, background: "currentColor" }} />{stale ? "Reconnecting to the front desk…" : "Live"}
+          </span>
+          <span style={{ font: "400 48px/1 var(--font-sans)", letterSpacing: "-0.01em" }}>{clock ? fmtTime(view?.generatedAt ?? clock) : "--:--"}</span>
         </div>
       </header>
 
-      <main style={{ flex: 1, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 32, padding: 40 }}>
-        <section>
-          <h2 style={{ margin: "0 0 20px", font: "600 28px var(--font-sans)", color: "var(--text-on-dark-muted)" }}>Now Serving</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {view?.nowServing.length ? view.nowServing.map((s) => (
-              <div key={s.ticket} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 30px", borderRadius: 14, background: "var(--green-950)", borderLeft: "8px solid var(--green-600)", animation: fresh.includes(s.ticket) ? "called 1s ease-in-out 4" : undefined }}>
-                <span style={{ font: "700 72px/1 var(--font-sans)", letterSpacing: 1 }}>{s.ticket}</span>
-                <span style={{ textAlign: "right" }}>
-                  <span style={{ display: "block", font: "500 16px var(--font-sans)", color: "var(--text-on-dark-muted)" }}>please go to</span>
-                  <span style={{ font: "600 30px var(--font-sans)" }}>{s.counter}</span>
-                </span>
-              </div>
-            )) : <p style={{ font: "400 22px var(--font-sans)", color: "var(--text-on-dark-muted)" }}>{view ? "Nobody is being served right now." : "Waiting for the front desk…"}</p>}
-          </div>
+      <main style={{ flex: 1, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.25fr)", gap: 24, padding: "24px 48px" }}>
+        <section style={{ ...card, padding: 28, display: "flex", flexDirection: "column", gap: 16 }}>
+          <h2 style={{ margin: 0, font: "500 24px/30px var(--font-sans)" }}>Now serving</h2>
+          {view?.nowServing.length ? view.nowServing.map((s) => (
+            <div key={s.ticket} className="pc-inset" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "22px 26px", borderRadius: 16, animation: fresh.includes(s.ticket) ? "called 1.1s var(--ease-out) 3" : undefined }}>
+              <span style={{ font: "400 76px/1 var(--font-sans)", letterSpacing: "-0.02em" }}>{s.ticket}</span>
+              <span style={{ textAlign: "right" }}>
+                <span style={{ display: "block", font: "400 18px/24px var(--font-sans)", color: "var(--label)" }}>please go to</span>
+                <span style={{ font: "500 30px/36px var(--font-sans)" }}>{s.counter}</span>
+              </span>
+            </div>
+          )) : <p style={{ margin: 0, font: "400 22px/30px var(--font-sans)", color: "var(--ink-2)" }}>{view ? "Nobody is being served right now." : "Waiting for the front desk…"}</p>}
         </section>
 
-        <section>
-          <h2 style={{ margin: "0 0 20px", font: "600 28px var(--font-sans)", color: "var(--text-on-dark-muted)" }}>Waiting · {view?.waitingCount ?? 0}</h2>
+        <section style={{ ...card, padding: 28, display: "flex", flexDirection: "column", gap: 16 }}>
+          <h2 style={{ margin: 0, font: "500 24px/30px var(--font-sans)" }}>Waiting <span style={{ color: "var(--label)", fontWeight: 400 }}>· {view?.waitingCount ?? 0}</span></h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 12 }}>
             {view?.waiting.map((w) => (
-              <div key={w.ticket} style={{ display: "grid", gridTemplateColumns: "48px 1fr auto", alignItems: "center", gap: 16, padding: "14px 20px", borderRadius: 12, background: "var(--navy-800)", border: "1px solid var(--border-dark)" }}>
-                <span style={{ font: "500 18px var(--font-sans)", color: "var(--text-on-dark-subtle)" }}>#{w.position}</span>
-                <span style={{ font: "700 34px/1 var(--font-sans)" }}>{w.ticket}</span>
-                <span style={{ font: "500 22px var(--font-sans)", color: w.estWaitMin != null && w.estWaitMin < 1 ? "var(--green-500)" : "var(--text-on-dark-muted)" }}>{waitLabel(w.estWaitMin)}</span>
+              <div key={w.ticket} className="pc-inset" style={{ display: "grid", gridTemplateColumns: "52px 1fr auto", alignItems: "center", gap: 16, padding: "16px 20px" }}>
+                <span style={{ font: "400 18px var(--font-sans)", color: "var(--label)" }}>#{w.position}</span>
+                <span style={{ font: "400 36px/1 var(--font-sans)", letterSpacing: "-0.01em" }}>{w.ticket}</span>
+                {w.estWaitMin != null && w.estWaitMin < 1
+                  ? <span className="pc-pill" style={{ height: 30, padding: "0 12px", font: "500 18px var(--font-sans)", background: "var(--positive-bg)", color: "var(--positive)" }}>Next</span>
+                  : <span style={{ font: "400 22px var(--font-sans)", color: "var(--ink-2)" }}>{waitLabel(w.estWaitMin)}</span>}
               </div>
             ))}
           </div>
         </section>
       </main>
 
-      <footer style={{ padding: "16px 40px", borderTop: "1px solid var(--border-dark)", display: "flex", justifyContent: "space-between", font: "400 16px var(--font-sans)", color: "var(--text-on-dark-subtle)" }}>
+      <footer style={{ padding: "8px 48px 28px", display: "flex", justifyContent: "space-between", gap: 24, font: "400 18px/24px var(--font-sans)", color: "var(--label)" }}>
         <span>Please listen for your ticket number. Urgent cases may be seen first; everyone is guaranteed to move up.</span>
         <span>Wait times are estimates.</span>
       </footer>

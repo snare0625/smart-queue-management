@@ -1,12 +1,27 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { Database, LogOut, RotateCcw } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Panel } from "@/components/ui/Panel";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { IconChip, type Tint } from "@/components/ui/StatCard";
 import { getSupabase } from "@/lib/db/client";
 import { useQueue } from "./QueueProvider";
 
-const row = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 0", borderBottom: "1px solid var(--border-card)", font: "var(--type-table)" } as const;
-const muted = { color: "var(--text-secondary)" };
+/** One setting as an inset row: icon chip, title + explanation, and the control on the right. */
+function Row({ icon, tint, title, hint, children }: { icon: LucideIcon; tint: Tint; title: ReactNode; hint: ReactNode; children?: ReactNode }) {
+  return (
+    <div className="pc-inset" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <IconChip icon={icon} tint={tint} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, font: "var(--type-body)", fontWeight: 500, color: "var(--ink)" }}>{title}</div>
+        <div style={{ font: "var(--type-control)", color: "var(--ink-2)" }}>{hint}</div>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export function SettingsPage() {
   const { mode, session, resetDemo, setOfflineDemo } = useQueue();
@@ -14,22 +29,20 @@ export function SettingsPage() {
   const configured = !!getSupabase();
 
   return (
-    <main style={{ maxWidth: 760 }}>
-      <Panel title="Settings" size="lg">
-        <div style={row}>
-          <div><strong>Data source</strong><div style={muted}>{mode === "supabase" ? "Supabase — shared by every desk and the public screen" : configured ? "Offline demo (this tab only)" : "Offline demo — add Supabase keys to .env.local to go live"}</div></div>
-          {configured && <Button variant="secondary" size="sm" onClick={() => setOfflineDemo(mode === "supabase")}>{mode === "supabase" ? "Switch to offline demo" : "Switch to Supabase"}</Button>}
-        </div>
+    <main style={{ maxWidth: 820 }}>
+      <Panel title="Workspace">
+        <Row icon={Database} tint="blue" title={<>Data source {mode === "supabase" ? <Badge tone="positive">Supabase</Badge> : <Badge tone="neutral">Offline demo</Badge>}</>}
+          hint={mode === "supabase" ? "Shared by every desk and the public waiting-room screen." : configured ? "Lives only in this browser tab; nothing is saved." : "Add Supabase keys to .env.local to share data between desks."}>
+          {configured && <Button variant="secondary" size="sm" onClick={() => setOfflineDemo(mode === "supabase")}>{mode === "supabase" ? "Use offline demo" : "Use Supabase"}</Button>}
+        </Row>
         {session && (
-          <div style={row}>
-            <div><strong>Signed in</strong><div style={muted}>{session.user.email}</div></div>
+          <Row icon={LogOut} tint="purple" title="Signed in" hint={session.user.email}>
             <Button variant="secondary" size="sm" onClick={() => getSupabase()!.auth.signOut()}>Sign out</Button>
-          </div>
+          </Row>
         )}
-        <div style={{ ...row, borderBottom: "none" }}>
-          <div><strong>Reset demo day</strong><div style={muted}>Replace all queue data with a fresh seeded morning{mode === "supabase" ? " (in the database, for every desk)" : ""}.</div></div>
+        <Row icon={RotateCcw} tint="brand" title="Reset the demo day" hint={`Replace all queue data with a fresh seeded morning${mode === "supabase" ? " — in the database, for every desk" : ""}.`}>
           <Button size="sm" disabled={resetting} onClick={async () => { setResetting(true); await resetDemo(); setResetting(false); }}>{resetting ? "Resetting…" : "Reset"}</Button>
-        </div>
+        </Row>
       </Panel>
     </main>
   );
