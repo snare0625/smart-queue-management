@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { th, td } from "@/components/ui/QueueTable";
 import { POLICY_COLOR, POLICY_SHORT, WaitingChart } from "@/components/simulation/WaitingChart";
+import { StaffingPanel } from "@/components/simulation/StaffingPanel";
 import { MIN, WEIGHTS, compareDay, compareMany, fmtTime, generateDay, type Policy, type SimMetrics, type SimResult } from "@/lib/engine";
 
 const POLICY_ORDER: Policy[] = ["fifo", "strict", "smart"];
@@ -170,6 +171,8 @@ export function SimulationPage() {
           <Callout items={findings(dayMetrics)} />
         </Panel>
       </div>
+
+      <StaffingPanel day={day} weights={weights} />
 
       <Panel title="Averaged over 20 different days" action={<Button variant="secondary" disabled={running} onClick={runMany}>{running ? "Running 60 simulations…" : many ? "Run again" : "Run 20 days"}</Button>}>
         {many ? <ComparisonTable metrics={many} /> : (

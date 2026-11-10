@@ -14,6 +14,7 @@ import { QueuePrediction, ServiceDistribution, SimulationResults } from "./Analy
 import { FILTERS, toEntry, toStaffRow, type QueueEntry } from "@/lib/data";
 import { MIN, SERVICES, bestFreeStaff, explainNext, fmtTime, nextUp, serviceById, staffStatus, type Priority } from "@/lib/engine";
 import { useQueue } from "./QueueProvider";
+import { LoadBanner } from "./LoadBanner";
 
 const NAMES = ["Ava N.", "Liam K.", "Mia D.", "Ethan B.", "Zoe P.", "Lucas M.", "Chloe T.", "Owen S."];
 
@@ -50,6 +51,7 @@ export function LiveQueue({ go }: { go?: (page: string) => void }) {
     const id = nextTicket();
     dispatch({ type: "join", customer: { id, name: NAMES[Number(id.slice(1)) % NAMES.length], serviceId: service.id, priority, arrivedAt: now } });
   };
+  const rush = () => { for (let i = 0; i < 8; i++) addCustomer(); }; // a coach-load arrives: handy for seeing the overload warning
   if (!ready) return <main />;
 
   return (
@@ -61,8 +63,9 @@ export function LiveQueue({ go }: { go?: (page: string) => void }) {
         <StatCard icon={Users} iconFilled value={onDuty.length} label="Staff On Duty" />
         <StatCard visual={<ProgressRing value={utilisation} />} value={utilisation + "%"} label="Staff Utilisation" />
       </div>
+      <LoadBanner />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 428px", gap: 12 }}>
-        <Panel title="Queue" size="lg" action={<div style={{ display: "flex", gap: 8 }}><Button variant="secondary" icon={Monitor} onClick={() => window.open("/display", "queuepro-display")}>Open display</Button><Button variant="secondary" icon={FastForward} onClick={() => fastForward(10)}>+10 min</Button><Button icon={Plus} onClick={addCustomer}>Add Customer</Button></div>}>
+        <Panel title="Queue" size="lg" action={<div style={{ display: "flex", gap: 8 }}><Button variant="secondary" icon={Monitor} onClick={() => window.open("/display", "queuepro-display")}>Open display</Button><Button variant="secondary" icon={FastForward} onClick={() => fastForward(10)}>+10 min</Button><Button variant="secondary" icon={Users} onClick={rush}>Rush +8</Button><Button icon={Plus} onClick={addCustomer}>Add Customer</Button></div>}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {FILTERS.map((f) => <FilterTab key={f} label={f} count={count(f)} active={filter === f} onClick={() => setFilter(f)} />)}
           </div>

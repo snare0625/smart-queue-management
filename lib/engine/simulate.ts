@@ -28,7 +28,16 @@ const pickWeighted = <T,>(r: () => number, items: [T, number][]): T => {
 
 /** What the simulator knows that the queue doesn't: how long the visit will REALLY take, and how long they'll wait before walking out. */
 export interface SimArrival { customer: Customer; actualMin: number; patienceMin: number }
-export interface DayPlan { seed: number; open: number; close: number; arrivals: SimArrival[]; staff: Staff[]; breaks: { staffId: string; at: number; min: number }[] }
+export interface DayPlan {
+  seed: number; open: number; close: number; arrivals: SimArrival[]; staff: Staff[]; breaks: { staffId: string; at: number; min: number }[];
+  shifts?: Record<string, { start: number; end: number }>; // staff without an entry work the whole day
+}
+const onShift = (day: DayPlan, s: Staff, t: number) => { const sh = day.shifts?.[s.id]; return !sh || (t >= sh.start && t < sh.end); };
+
+/** The same day with one extra staff member (skills copied from `like`) working start → end. Used to test staffing ideas. */
+export function withExtraStaff(day: DayPlan, like: Staff, start: number, end: number): DayPlan {
+  return { ...day, staff: [...day.staff, { id: "extra", name: `Extra (like ${like.name})`, serviceIds: like.serviceIds }], shifts: { ...day.shifts, extra: { start, end } } };
+}
 
 const HOURLY_ARRIVALS: [number, number][] = [[0, 6], [1, 10], [2, 12], [3, 9], [4, 6], [5, 7], [6, 10], [7, 8], [8, 5]]; // 08:00–17:00: morning and afternoon peaks
 const SERVICE_MIX: [string, number][] = [["general", 30], ["consult", 25], ["blood", 20], ["followup", 13], ["urgent-consult", 6], ["assessment", 6]];
@@ -118,7 +127,7 @@ export function simulateDay(day: DayPlan, policy: Policy, weights: Weights = WEI
       }
     }
     const offered = POLICIES[policy].order(state.waiting, t, weights);
-    const free = state.staff.filter((s) => staffStatus(s, t) === "available").sort((a, b) => a.serviceIds.length - b.serviceIds.length);
+    const free = state.staff.filter((s) => staffStatus(s, t) === "available" && onShift(day, s, t)).sort((a, b) => a.serviceIds.length - b.serviceIds.length);
     for (const s of free) {
       const c = offered.find((x) => canServe(s, x.serviceId) && state.waiting.some((w) => w.id === x.id));
       if (c) act({ type: "serve", customerId: c.id, staffId: s.id, at: t });
@@ -141,7 +150,11 @@ function measure(day: DayPlan, state: QueueState, timeline: SimResult["timeline"
   const appts = done.filter((v) => v.customer.appointmentAt != null);
   const finishedAt = Math.max(day.open, ...state.history.map((v) => v.endedAt));
   const breakMin = day.breaks.reduce((s, b) => s + b.min, 0);
-  const capacity = day.staff.length * (finishedAt - day.open) / MIN - breakMin;
+  // staff-minutes on duty: each person's shift (or the whole day), clipped to opening → last visit, minus breaks
+  const capacity = day.staff.reduce((sum, s) => {
+    const sh = day.shifts?.[s.id];
+    return sum + Math.max(0, Math.min(finishedAt, sh?.end ?? finishedAt) - Math.max(day.open, sh?.start ?? day.open)) / MIN;
+  }, 0) - breakMin;
   return {
     customers: day.arrivals.length, served: done.length, walkedOut: left.length, unserved: state.waiting.length,
     avgWait: avg(waits) ?? 0, p90Wait: pct(waits, 0.9), maxWait: Math.max(0, ...waits),
