@@ -34,7 +34,7 @@ export function Login({ onOfflineDemo }: { onOfflineDemo: () => void }) {
           <input type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} style={input} />
         </label>
         {error && <div role="alert" style={{ font: "var(--type-label)", color: "var(--red-500)" }}>{error}</div>}
-        <Button disabled={busy} style={{ justifyContent: "center" }}>{busy ? "Signing in…" : "Sign in"}</Button>
+        <Button type="submit" disabled={busy} style={{ justifyContent: "center" }}>{busy ? "Signing in…" : "Sign in"}</Button>
         <button type="button" onClick={onOfflineDemo} style={{ border: "none", background: "none", color: "var(--accent-text)", font: "var(--fw-medium) 13px var(--font-sans)", cursor: "pointer" }}>Use the offline demo instead</button>
         <a href="/display" style={{ textAlign: "center", font: "var(--type-label)", color: "var(--text-on-dark-muted)" }}>Open the public waiting-room screen →</a>
       </form>

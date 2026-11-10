@@ -116,7 +116,7 @@ export function SimulationPage() {
   };
 
   return (
-    <main style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+    <main style={{ display: "flex", flexDirection: "column", gap: "var(--gap)", minWidth: 0 }}>
       <Panel title="Simulation" size="lg">
         <p style={{ margin: 0, font: "var(--type-table)", color: "var(--text-secondary)" }}>
           A generated clinic day (08:00–17:00) with walk-ins, appointments, urgent cases, real service times that differ from the estimates, and people who leave if they wait too long.

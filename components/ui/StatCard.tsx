@@ -1,18 +1,29 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-export function StatCard({ icon: I, iconFilled, value, label, meta, visual, style }: { icon?: LucideIcon; iconFilled?: boolean; value: ReactNode; label: string; meta?: ReactNode; visual?: ReactNode; style?: CSSProperties }) {
+
+export type Tint = "brand" | "green" | "blue" | "purple" | "amber";
+const TINT: Record<Tint, [bg: string, fg: string]> = {
+  brand: ["--brand-tint", "--brand"], green: ["--cat-green-tint", "--positive"], blue: ["--cat-blue-tint", "--cat-blue"],
+  purple: ["--cat-purple-tint", "--cat-purple-ink"], amber: ["--cat-amber-tint", "--warning"],
+};
+
+/** Circular tinted icon chip (30px). Decorative: the label next to it carries the meaning. */
+export function IconChip({ icon: I, tint = "brand", size = 30 }: { icon: LucideIcon; tint?: Tint; size?: number }) {
+  const [bg, fg] = TINT[tint];
+  return <span aria-hidden style={{ width: size, height: size, borderRadius: 999, background: `var(${bg})`, color: `var(${fg})`, display: "grid", placeItems: "center", flexShrink: 0 }}><I size={Math.round(size * 0.5)} strokeWidth={1.8} /></span>;
+}
+
+/** KPI tile: label + icon chip on top, big value, small sub-line (and optional extra like a progress bar). */
+export function StatCard({ label, value, icon, tint, sub, children }: { label: string; value: ReactNode; icon: LucideIcon; tint?: Tint; sub?: ReactNode; children?: ReactNode }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", minHeight: 84, borderRadius: "var(--radius-md)", background: "var(--surface-dark)", color: "var(--text-on-dark)", minWidth: 0, ...style }}>
-      {visual ?? (I && (
-        <div style={{ width: 46, height: 46, borderRadius: "var(--radius-md)", background: "var(--surface-dark-icon)", display: "grid", placeItems: "center", color: "var(--blue-600)", flexShrink: 0 }}>
-          <I size={26} fill={iconFilled ? "currentColor" : "none"} strokeWidth={iconFilled ? 1.5 : 2.5} />
-        </div>
-      ))}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-        <div style={{ font: "var(--type-stat)" }}>{value}</div>
-        <div style={{ font: "var(--fw-regular) 13px var(--font-sans)", color: "var(--text-on-dark-muted)", whiteSpace: "nowrap" }}>{label}</div>
-        {meta}
+    <div className="pc-card" style={{ padding: "18px 20px", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ font: "var(--type-control)", color: "var(--label)" }}>{label}</span>
+        <IconChip icon={icon} tint={tint} />
       </div>
+      <div style={{ font: "var(--type-kpi)", letterSpacing: "var(--tracking-tight)", color: "var(--ink)" }}>{value}</div>
+      {children}
+      {sub && <div style={{ font: "var(--type-label)", color: "var(--label)" }}>{sub}</div>}
     </div>
   );
 }

@@ -1,17 +1,18 @@
-import { Check, Info } from "lucide-react";
 import type { ReactNode } from "react";
+
+/** A titled list inside an inset row. Items are numbered 01, 02 … with the accent (decoration only; the text carries the meaning). */
 export function Callout({ title, items = [] }: { title?: string; items?: ReactNode[] }) {
   return (
-    <div style={{ display: "flex", gap: 12, padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--callout-bg)", color: "var(--text-primary)" }}>
-      <div style={{ width: 20, height: 20, borderRadius: 999, background: "var(--blue-600)", color: "var(--white)", display: "grid", placeItems: "center", flexShrink: 0 }}><Info size={14} /></div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {title && <div style={{ font: "var(--fw-semibold) var(--fs-table) var(--font-sans)" }}>{title}</div>}
+    <div className="pc-inset" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {title && <div style={{ font: "var(--type-body)", fontWeight: 500, color: "var(--ink)" }}>{title}</div>}
+      <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
         {items.map((t, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, font: "var(--type-table)" }}>
-            <span style={{ width: 14, height: 14, borderRadius: 999, background: "var(--green-600)", color: "var(--white)", display: "grid", placeItems: "center", flexShrink: 0 }}><Check size={10} strokeWidth={3} /></span>{t}
-          </div>
+          <li key={i} style={{ display: "flex", gap: 10, font: "var(--type-control)", color: "var(--ink-2)" }}>
+            <span aria-hidden style={{ font: "var(--type-micro)", color: "var(--brand)", paddingTop: 2, minWidth: 14 }}>{String(i + 1).padStart(2, "0")}</span>
+            <span>{t}</span>
+          </li>
         ))}
-      </div>
+      </ol>
     </div>
   );
 }

@@ -14,7 +14,7 @@ export function SettingsPage() {
   const configured = !!getSupabase();
 
   return (
-    <main style={{ padding: 16, maxWidth: 760 }}>
+    <main style={{ maxWidth: 760 }}>
       <Panel title="Settings" size="lg">
         <div style={row}>
           <div><strong>Data source</strong><div style={muted}>{mode === "supabase" ? "Supabase — shared by every desk and the public screen" : configured ? "Offline demo (this tab only)" : "Offline demo — add Supabase keys to .env.local to go live"}</div></div>

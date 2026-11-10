@@ -3,27 +3,30 @@ import { MoreHorizontal } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Badge } from "./Badge";
 import { IconButton } from "./IconButton";
-import type { QueueEntry, Stripe } from "@/lib/data";
+import type { QueueEntry } from "@/lib/data";
 export interface RowAction { label: string; onClick: () => void; disabled?: boolean; danger?: boolean }
-const STRIPE: Record<Stripe, string> = { urgent: "var(--red-500)", priority: "var(--orange-500)", appointment: "var(--purple-500)", general: "var(--cyan-500)", teal: "var(--teal-400)", none: "transparent" };
-export const th: CSSProperties = { textAlign: "left", font: "var(--fw-medium) var(--fs-table) var(--font-sans)", color: "var(--text-secondary)", padding: "8px 10px", borderBottom: "1px solid var(--border-card)", whiteSpace: "nowrap" };
-export const td: CSSProperties = { font: "var(--type-table)", color: "var(--text-primary)", padding: "0 10px", height: "var(--table-row-h)", borderBottom: "1px solid var(--border-card)", whiteSpace: "nowrap" };
+
+// Inline cell styles for simpler tables elsewhere (prefer className="pc-table" for new tables).
+export const th: CSSProperties = { height: 40, padding: "0 16px", background: "var(--raised)", font: "var(--type-label)", color: "var(--label)", textAlign: "left", whiteSpace: "nowrap" };
+export const td: CSSProperties = { height: "var(--table-row-h)", padding: "0 16px", borderBottom: "1px solid var(--track)", font: "var(--type-body)", color: "var(--ink-2)", whiteSpace: "nowrap" };
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+
 // The menu is position:fixed (placed from the button's screen position) so the table's scroll container can't clip it.
 function RowMenu({ x, y, actions, onClose }: { x: number; y: number; actions: RowAction[]; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const away = (e: Event) => { if (!ref.current?.contains(e.target as Node)) onClose(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
     window.addEventListener("scroll", onClose, true);
-    return () => { document.removeEventListener("mousedown", away); window.removeEventListener("scroll", onClose, true); };
+    ref.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    return () => { document.removeEventListener("mousedown", away); document.removeEventListener("keydown", esc); window.removeEventListener("scroll", onClose, true); };
   }, [onClose]);
   return (
-    <div ref={ref} role="menu" style={{ position: "fixed", top: y, right: window.innerWidth - x, zIndex: 50, minWidth: 220, padding: 4, background: "var(--surface-card)", border: "1px solid var(--border-card)", borderRadius: "var(--radius-sm)", boxShadow: "0 8px 24px rgba(10,20,30,.25)" }}>
+    <div ref={ref} role="menu" className="pc-popover" style={{ position: "fixed", top: y, right: window.innerWidth - x, zIndex: 50, minWidth: 240 }}>
       {actions.map((a) => (
-        <button key={a.label} role="menuitem" disabled={a.disabled} onClick={() => { a.onClick(); onClose(); }}
-          style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 10px", border: "none", borderRadius: "var(--radius-xs)", background: "transparent", font: "var(--type-table)", color: a.disabled ? "var(--text-muted)" : a.danger ? "var(--red-600)" : "var(--text-primary)", cursor: a.disabled ? "not-allowed" : "pointer" }}
-          onMouseEnter={(e) => { if (!a.disabled) e.currentTarget.style.background = "var(--surface-muted)"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+        <button key={a.label} type="button" role="menuitem" disabled={a.disabled} className={"pc-menu-item" + (a.danger ? " pc-menu-item--danger" : "")} onClick={() => { a.onClick(); onClose(); }}>
           {a.label}
         </button>
       ))}
@@ -33,27 +36,29 @@ function RowMenu({ x, y, actions, onClose }: { x: number; y: number; actions: Ro
 
 export function QueueTable({ rows, actions }: { rows: QueueEntry[]; actions?: (r: QueueEntry) => RowAction[] }) {
   const [menu, setMenu] = useState<{ row: QueueEntry; x: number; y: number } | null>(null);
-  const open = (row: QueueEntry, el: HTMLElement) => { const b = el.getBoundingClientRect(); setMenu({ row, x: b.right, y: b.bottom + 4 }); };
+  const open = (row: QueueEntry, el: HTMLElement) => { const b = el.getBoundingClientRect(); setMenu({ row, x: b.right, y: b.bottom + 6 }); };
   const close = () => setMenu(null);
   return (
     <div style={{ overflowX: "auto" }}>
       {menu && actions && <RowMenu x={menu.x} y={menu.y} actions={actions(menu.row)} onClose={close} />}
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead><tr>{["#", "Name", "Service", "Priority", "Arrived", "Waiting", "Est. Wait", "Staff", "Score", "Status", "Actions"].map((h) => <th key={h} style={{ ...th, textAlign: h === "Actions" ? "right" : "left" }}>{h}</th>)}</tr></thead>
+      <table className="pc-table" style={{ minWidth: 980 }}>
+        <thead><tr>{["#", "Name", "Service", "Priority", "Arrived", "Waiting", "Est. wait", "Staff", "Score", "Status", ""].map((h, i) => <th key={i} style={{ textAlign: h === "Score" ? "right" : "left" }}>{h}</th>)}</tr></thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.id}>
-              <td style={{ ...td, borderLeft: "var(--stripe-w) solid " + STRIPE[r.stripe] }}>{r.position ?? i + 1}</td>
-              <td style={{ ...td, fontWeight: 500 }}>{r.name}</td>
-              <td style={td}>{r.service}</td>
-              <td style={td}><Badge tone={r.priority}>{cap(r.priority)}</Badge></td>
-              <td style={td}>{r.arrived}</td>
-              <td style={td}>{r.waiting}</td>
-              <td style={td}>{r.est}</td>
-              <td style={{ ...td, color: "var(--text-secondary)" }}>{r.staff ?? "–"}</td>
-              <td style={{ ...td, fontVariantNumeric: "tabular-nums" }}>{r.score ?? "–"}</td>
-              <td style={td}><Badge tone={r.status}>{r.status === "next" ? "Next" : "Waiting"}</Badge></td>
-              <td style={{ ...td, textAlign: "right" }}><span onClick={(e) => open(r, e.currentTarget)} style={{ display: "inline-block" }}><IconButton icon={MoreHorizontal} label={`Actions for ${r.name}`} size={26} /></span></td>
+              <td style={{ color: "var(--label)" }}>{r.position ?? i + 1}</td>
+              <td style={{ color: "var(--ink)", fontWeight: 500 }}>{r.name}<span style={{ display: "block", font: "var(--type-label)", color: "var(--label)" }}>{r.id}</span></td>
+              <td>{r.service}</td>
+              <td><Badge tone={r.priority}>{cap(r.priority)}</Badge></td>
+              <td>{r.arrived}</td>
+              <td>{r.waiting}</td>
+              <td style={{ color: "var(--ink)" }}>{r.est}</td>
+              <td>{r.staff ?? "–"}</td>
+              <td style={{ textAlign: "right" }}>{r.score ?? "–"}</td>
+              <td><Badge tone={r.status}>{r.status === "next" ? "Next" : "Waiting"}</Badge></td>
+              <td style={{ textAlign: "right", width: 48 }}>
+                <span onClick={(e) => open(r, e.currentTarget)} style={{ display: "inline-block" }}><IconButton icon={MoreHorizontal} label={`Actions for ${r.name}`} /></span>
+              </td>
             </tr>
           ))}
         </tbody>

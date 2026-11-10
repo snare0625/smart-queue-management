@@ -13,7 +13,7 @@ export function ServicesPage() {
   const staffName = (id?: string) => state.staff.find((s) => s.id === id)?.name ?? "–";
 
   return (
-    <main style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+    <main style={{ display: "flex", flexDirection: "column", gap: "var(--gap)", minWidth: 0 }}>
       <Panel title="Service Times" size="lg">
         <p style={{ margin: 0, font: "var(--type-table)", ...muted }}>
           Estimates start at the configured duration and learn from every completed visit: each one moves the estimate {LEARNING.alpha * 100}% of the way towards

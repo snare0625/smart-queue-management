@@ -22,12 +22,16 @@ function Shell() {
   if (mode === "supabase" && !session) return <Login onOfflineDemo={() => setOfflineDemo(true)} />;
   const Page = PAGES[page];
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "var(--sidebar-w) 1fr", gridTemplateRows: "var(--topbar-h) 1fr", minHeight: "100vh", minWidth: 1280 }}>
-      <TopBar page={page} setPage={setPage} />
+    <div style={{ display: "grid", gridTemplateColumns: "var(--sidebar-w) minmax(0,1fr)", minHeight: "100vh", minWidth: 1280 }}>
       <Sidebar page={page} setPage={setPage} />
-      <div style={{ minWidth: 0 }}>
-        {syncError && <div role="alert" style={{ margin: "16px 16px 0", padding: "10px 14px", borderRadius: "var(--radius-sm)", background: "var(--red-100)", color: "var(--red-600)", font: "var(--type-table)" }}>Sync problem: {syncError} — showing the latest data from the database.</div>}
-        {Page ? <Page go={setPage} /> : <main style={{ padding: 40, color: "var(--text-on-dark-muted)", font: "var(--type-body)" }}>{page} — coming soon.</main>}
+      <div style={{ minWidth: 0, padding: "var(--page-pad) 32px 48px", display: "flex", flexDirection: "column", gap: "var(--gap)" }}>
+        <TopBar page={page} />
+        {syncError && (
+          <div role="alert" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: "var(--r-inset)", background: "var(--negative-bg)", color: "var(--negative)", font: "var(--type-body)" }}>
+            <span className="pc-pill" style={{ background: "var(--raised)", color: "var(--negative)" }}>Sync problem</span>{syncError} — showing the latest data from the database.
+          </div>
+        )}
+        <Page go={setPage} />
       </div>
     </div>
   );

@@ -1,13 +1,20 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Button } from "./Button";
-export function Panel({ title, tone = "light", size = "md", action, actionLabel, onAction, children, style }: { title?: ReactNode; tone?: "light" | "dark"; size?: "md" | "lg"; action?: ReactNode; actionLabel?: string; onAction?: () => void; children?: ReactNode; style?: CSSProperties }) {
-  const dark = tone === "dark";
+
+/** A Paper Calm card: surface background, 1px white rim, soft shadow, radius 20, padding 20, 15/500 title. */
+export function Panel({ title, meta, action, actionLabel, onAction, children, style }: {
+  title?: ReactNode; meta?: ReactNode; tone?: "light" | "dark"; size?: "md" | "lg";
+  action?: ReactNode; actionLabel?: string; onAction?: () => void; children?: ReactNode; style?: CSSProperties;
+}) {
   return (
-    <section style={{ background: dark ? "var(--navy-850)" : "var(--surface-card)", border: dark ? "1px solid var(--border-dark)" : "none", borderRadius: "var(--radius-md)", padding: size === "lg" ? "18px 20px" : "14px 16px", color: dark ? "var(--text-on-dark)" : "var(--text-primary)", display: "flex", flexDirection: "column", gap: 12, minWidth: 0, ...style }}>
+    <section className="pc-card" style={style}>
       {(title || action || actionLabel) && (
-        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <h2 style={{ margin: 0, font: size === "lg" ? "var(--type-title)" : "var(--type-panel-title)" }}>{title}</h2>
-          {action ?? (actionLabel && <Button variant="ghost" size="sm" onClick={onAction} style={{ padding: 0 }}>{actionLabel}</Button>)}
+        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", minHeight: 32 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            <h2 className="pc-card-title">{title}</h2>
+            {meta && <span style={{ font: "var(--type-label)", color: "var(--label)" }}>{meta}</span>}
+          </div>
+          {action ?? (actionLabel && <Button variant="ghost" size="sm" onClick={onAction}>{actionLabel}</Button>)}
         </header>
       )}
       {children}
