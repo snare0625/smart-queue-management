@@ -1,5 +1,7 @@
 "use client";
 import { useMemo } from "react";
+import { motion } from "motion/react";
+import { cardIn } from "@/components/ui/motion";
 import { UserPlus } from "lucide-react";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { IconChip } from "@/components/ui/StatCard";
@@ -25,7 +27,7 @@ export function LoadBanner() {
 
   const issues = report.services.filter((s) => s.level !== "ok").slice(0, 3);
   return (
-    <section role="status" aria-label="Queue load" className="pc-card" style={{ flexDirection: "row", alignItems: "stretch", gap: 20, padding: "16px 20px" }}>
+    <motion.section variants={cardIn} initial="hidden" animate="show" role="status" aria-label="Queue load" className="pc-card" style={{ flexDirection: "row", alignItems: "stretch", gap: 20, padding: "16px 20px" }}>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, font: "var(--type-body)", color: "var(--ink)" }}>
           <Badge tone={tone}>{word}</Badge>
@@ -48,6 +50,6 @@ export function LoadBanner() {
           </div>
         </div>
       )}
-    </section>
+    </motion.section>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { motion } from "motion/react";
+import { rowIn, spring } from "./motion";
 import { Badge } from "./Badge";
 import { IconButton } from "./IconButton";
 import type { QueueEntry } from "@/lib/data";
@@ -24,33 +26,35 @@ function RowMenu({ x, y, actions, onClose }: { x: number; y: number; actions: Ro
     return () => { document.removeEventListener("mousedown", away); document.removeEventListener("keydown", esc); window.removeEventListener("scroll", onClose, true); };
   }, [onClose]);
   return (
-    <div ref={ref} role="menu" className="pc-popover" style={{ position: "fixed", top: y, right: window.innerWidth - x, zIndex: 50, minWidth: 240 }}>
+    <motion.div ref={ref} role="menu" className="pc-popover" initial={{ opacity: 0, scale: 0.95, y: -6 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={spring}
+      style={{ position: "fixed", top: y, right: window.innerWidth - x, zIndex: 50, minWidth: 240, transformOrigin: "top right" }}>
       {actions.map((a) => (
         <button key={a.label} type="button" role="menuitem" disabled={a.disabled} className={"pc-menu-item" + (a.danger ? " pc-menu-item--danger" : "")} onClick={() => { a.onClick(); onClose(); }}>
           {a.label}
         </button>
       ))}
-    </div>
+    </motion.div>
   );
 }
 
-export function QueueTable({ rows, actions }: { rows: QueueEntry[]; actions?: (r: QueueEntry) => RowAction[] }) {
+/** `replayKey` changes (e.g. the filter) re-mount the body so the rows animate in again. */
+export function QueueTable({ rows, actions, replayKey }: { rows: QueueEntry[]; actions?: (r: QueueEntry) => RowAction[]; replayKey?: string }) {
   const [menu, setMenu] = useState<{ row: QueueEntry; x: number; y: number } | null>(null);
   const open = (row: QueueEntry, el: HTMLElement) => { const b = el.getBoundingClientRect(); setMenu({ row, x: b.right, y: b.bottom + 6 }); };
   const close = () => setMenu(null);
   return (
     <div style={{ overflowX: "auto" }}>
       {menu && actions && <RowMenu x={menu.x} y={menu.y} actions={actions(menu.row)} onClose={close} />}
-      <table className="pc-table" style={{ minWidth: 980 }}>
-        <thead><tr>{["#", "Name", "Service", "Priority", "Arrived", "Waiting", "Est. wait", "Staff", "Score", "Status", ""].map((h, i) => <th key={i} style={{ textAlign: h === "Score" ? "right" : "left" }}>{h}</th>)}</tr></thead>
-        <tbody>
+      {/* "Arrived" is dropped: "Waiting" already says how long; the arrival time is in the row tooltip */}
+      <table className="pc-table pc-table--dense" style={{ minWidth: 820 }}>
+        <thead><tr>{["#", "Name", "Service", "Priority", "Waiting", "Est. wait", "Staff", "Score", "Status", ""].map((h, i) => <th key={i} style={{ textAlign: h === "Score" ? "right" : "left" }}>{h}</th>)}</tr></thead>
+        <motion.tbody key={replayKey} initial="hidden" animate="show">
           {rows.map((r, i) => (
-            <tr key={r.id}>
+            <motion.tr key={r.id} variants={rowIn} custom={i} title={`Arrived ${r.arrived}`}>
               <td style={{ color: "var(--label)" }}>{r.position ?? i + 1}</td>
               <td style={{ color: "var(--ink)", fontWeight: 500 }}>{r.name}<span style={{ display: "block", font: "var(--type-label)", color: "var(--label)" }}>{r.id}</span></td>
               <td>{r.service}</td>
               <td><Badge tone={r.priority}>{cap(r.priority)}</Badge></td>
-              <td>{r.arrived}</td>
               <td>{r.waiting}</td>
               <td style={{ color: "var(--ink)" }}>{r.est}</td>
               <td>{r.staff ?? "–"}</td>
@@ -59,9 +63,9 @@ export function QueueTable({ rows, actions }: { rows: QueueEntry[]; actions?: (r
               <td style={{ textAlign: "right", width: 48 }}>
                 <span onClick={(e) => open(r, e.currentTarget)} style={{ display: "inline-block" }}><IconButton icon={MoreHorizontal} label={`Actions for ${r.name}`} /></span>
               </td>
-            </tr>
+            </motion.tr>
           ))}
-        </tbody>
+        </motion.tbody>
       </table>
     </div>
   );

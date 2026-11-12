@@ -1,4 +1,7 @@
+"use client";
 import type { CSSProperties, ReactNode } from "react";
+import { motion } from "motion/react";
+import { cardIn } from "./motion";
 import { Button } from "./Button";
 
 /** A Paper Calm card: surface background, 1px white rim, soft shadow, radius 20, padding 20, 15/500 title. */
@@ -7,7 +10,7 @@ export function Panel({ title, meta, action, actionLabel, onAction, children, st
   action?: ReactNode; actionLabel?: string; onAction?: () => void; children?: ReactNode; style?: CSSProperties;
 }) {
   return (
-    <section className="pc-card" style={style}>
+    <motion.section variants={cardIn} className="pc-card" style={style}>
       {(title || action || actionLabel) && (
         <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", minHeight: 32 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
@@ -18,6 +21,6 @@ export function Panel({ title, meta, action, actionLabel, onAction, children, st
         </header>
       )}
       {children}
-    </section>
+    </motion.section>
   );
 }

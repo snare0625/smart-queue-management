@@ -1,4 +1,6 @@
 "use client";
+import { motion } from "motion/react";
+import { pageIn, useToast } from "@/components/ui/motion";
 import { useState, type ReactNode } from "react";
 import { Database, LogOut, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -26,10 +28,11 @@ function Row({ icon, tint, title, hint, children }: { icon: LucideIcon; tint: Ti
 export function SettingsPage() {
   const { mode, session, resetDemo, setOfflineDemo } = useQueue();
   const [resetting, setResetting] = useState(false);
+  const toast = useToast();
   const configured = !!getSupabase();
 
   return (
-    <main style={{ maxWidth: 820 }}>
+    <motion.main variants={pageIn} initial="hidden" animate="show" style={{ maxWidth: 820 }}>
       <Panel title="Workspace">
         <Row icon={Database} tint="blue" title={<>Data source {mode === "supabase" ? <Badge tone="positive">Supabase</Badge> : <Badge tone="neutral">Offline demo</Badge>}</>}
           hint={mode === "supabase" ? "Shared by every desk and the public waiting-room screen." : configured ? "Lives only in this browser tab; nothing is saved." : "Add Supabase keys to .env.local to share data between desks."}>
@@ -41,9 +44,9 @@ export function SettingsPage() {
           </Row>
         )}
         <Row icon={RotateCcw} tint="brand" title="Reset the demo day" hint={`Replace all queue data with a fresh seeded morning${mode === "supabase" ? " — in the database, for every desk" : ""}.`}>
-          <Button size="sm" disabled={resetting} onClick={async () => { setResetting(true); await resetDemo(); setResetting(false); }}>{resetting ? "Resetting…" : "Reset"}</Button>
+          <Button size="sm" disabled={resetting} onClick={async () => { setResetting(true); await resetDemo(); setResetting(false); toast("Demo day reset", "positive"); }}>{resetting ? "Resetting…" : "Reset"}</Button>
         </Row>
       </Panel>
-    </main>
+    </motion.main>
   );
 }

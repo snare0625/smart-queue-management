@@ -1,4 +1,6 @@
 "use client";
+import { motion } from "motion/react";
+import { PageSkeleton, pageIn } from "@/components/ui/motion";
 import { Panel } from "@/components/ui/Panel";
 import { Badge } from "@/components/ui/Badge";
 import { LEARNING, SERVICES, fmtTime, serviceById } from "@/lib/engine";
@@ -16,12 +18,12 @@ function VsConfigured({ diff }: { diff: number }) {
 
 export function ServicesPage() {
   const { ready, state, learned } = useQueue();
-  if (!ready) return <main />;
+  if (!ready) return <PageSkeleton />;
   const recent = state.history.filter((v) => v.outcome === "completed").slice(-8).reverse();
   const staffName = (id?: string) => state.staff.find((s) => s.id === id)?.name ?? "–";
 
   return (
-    <main style={{ display: "flex", flexDirection: "column", gap: "var(--gap)", minWidth: 0 }}>
+    <motion.main variants={pageIn} initial="hidden" animate="show" style={{ display: "flex", flexDirection: "column", gap: "var(--gap)", minWidth: 0 }}>
       <Panel title="Service times" meta="Learned from completed visits">
         <p style={{ margin: 0, font: "var(--type-body)", color: "var(--ink-2)", maxWidth: 860 }}>
           Each estimate starts at the configured duration and learns from every completed visit: it moves {LEARNING.alpha * 100}% of the way towards what
@@ -71,6 +73,6 @@ export function ServicesPage() {
           </div>
         )}
       </Panel>
-    </main>
+    </motion.main>
   );
 }

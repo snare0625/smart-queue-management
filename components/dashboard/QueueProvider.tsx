@@ -30,6 +30,7 @@ interface QueueCtx {
   learned: Learned;
   plan: Assignment[];
   syncError: string | null;
+  retrySync: () => void; // reload from the database (after a failed write or fetch)
   fastForward: (min: number) => void;
   nextTicket: () => string;
   resetDemo: () => Promise<void>;
@@ -150,6 +151,7 @@ export function QueueProvider({ children }: { children: ReactNode }) {
 
   const value: QueueCtx = {
     mode, session, authChecked, ready: clock !== null && loaded, now, state, dispatch, learned, plan, syncError,
+    retrySync: () => { setSyncError(null); refetch(); },
     fastForward: (min) => setSkew((s) => s + min * MIN),
     nextTicket: () => "A" + String(ticketNo.current++).padStart(3, "0"),
     resetDemo: async () => {

@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { dur, ease } from "@/components/ui/motion";
 import { MIN, fmtTime, type Policy, type SimResult } from "@/lib/engine";
 import { monotonePath, niceScale, tooltipStyle } from "@/components/ui/chart";
 
@@ -16,6 +18,8 @@ export function WaitingChart({ results, open, cursor }: { results: Record<Policy
   const box = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(800);
   const [hover, setHover] = useState<number | null>(null);
+  const clip = "clip-" + useId().replace(/[^a-zA-Z0-9]/g, ""); // useId can contain «» or ":" which break url(#…)
+  const reduce = useReducedMotion();
   useEffect(() => {
     const ro = new ResizeObserver(([e]) => setW(Math.max(320, e.contentRect.width)));
     if (box.current) ro.observe(box.current);
@@ -42,13 +46,25 @@ export function WaitingChart({ results, open, cursor }: { results: Record<Policy
     return b[0] === a[0] ? a[1] : a[1] + ((px - a[0]) / (b[0] - a[0])) * (b[1] - a[1]);
   };
 
-  // Direct labels at each line's peak, nudged apart so they never overlap.
-  const labels = ORDER.map((p) => {
-    const tl = results[p].timeline;
-    const i = tl.reduce((best, pt, j) => (pt.waiting > tl[best].waiting ? j : best), 0);
-    return { p, x: Math.min(Math.max(x(i), PAD.l + 40), w - PAD.r - 50), y: y(tl[i].waiting) - 10 };
-  }).sort((a, b) => a.y - b.y);
-  for (let i = 1; i < labels.length; i++) if (Math.abs(labels[i].x - labels[i - 1].x) < 120 && labels[i].y - labels[i - 1].y < 15) labels[i].y = labels[i - 1].y + 15;
+  // Direct labels go where each line stands most apart from the others (not at the peak, where all three tend to meet).
+  // Greedy: the hero series (smart) picks first; each next label takes its best spot that is ≥140 px from labels already placed.
+  // If the line is the highest there, the label sits above it; otherwise below.
+  const candidates = (p: Policy) => {
+    const out: { m: number; score: number; above: boolean }[] = [];
+    for (let m = 30; m < results[p].timeline.length - 30; m += 5) {
+      const v = at(p, m), others = ORDER.filter((o) => o !== p).map((o) => at(o, m));
+      const gap = Math.min(...others.map((o) => Math.abs(v - o)));
+      out.push({ m, score: gap * 3 + v * 0.4, above: others.every((o) => o <= v) });
+    }
+    return out.sort((a, b) => b.score - a.score);
+  };
+  const labels: { p: Policy; x: number; y: number }[] = [];
+  for (const p of ["smart", "strict", "fifo"] as Policy[]) {
+    const c = candidates(p).find((k) => labels.every((l) => Math.abs(l.x - x(k.m)) >= 140)) ?? candidates(p)[0];
+    if (!c) continue;
+    const v = at(p, c.m);
+    labels.push({ p, x: Math.min(Math.max(x(c.m), PAD.l + 48), w - PAD.r - 56), y: c.above || v === 0 ? y(v) - 10 : y(v) + 18 });
+  }
 
   const focus = hover ?? cursor;
   const hours = Array.from({ length: Math.floor(minutes / 60) + 1 }, (_, i) => i * 60);
@@ -62,6 +78,8 @@ export function WaitingChart({ results, open, cursor }: { results: Record<Policy
           <linearGradient id="smart-fill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="var(--series-1)" stopOpacity=".32" /><stop offset="1" stopColor="var(--series-1)" stopOpacity="0" />
           </linearGradient>
+          {/* the data wipes in from the left (1.3 s); a clip-path reveals it, so the lines themselves never distort */}
+          <clipPath id={clip}><motion.rect x={0} y={0} height={H} initial={{ width: reduce ? w : 0 }} animate={{ width: w }} transition={{ duration: dur.wipe, ease }} /></clipPath>
         </defs>
         {Array.from({ length: top / step + 1 }, (_, i) => i * step).map((v) => (
           <g key={v}>
@@ -70,9 +88,11 @@ export function WaitingChart({ results, open, cursor }: { results: Record<Policy
           </g>
         ))}
         {hours.map((m) => <text key={m} x={x(m)} y={H - 8} textAnchor="middle" fontSize="11" fill="var(--label)">{fmtTime(open + m * MIN)}</text>)}
+        <g clipPath={`url(#${clip})`}>
         <path d={`${monotonePath(curves.smart)}L${curves.smart.at(-1)![0]},${y(0)}L${curves.smart[0][0]},${y(0)}Z`} fill="url(#smart-fill)" />
         {ORDER.map((p) => <path key={p} d={monotonePath(curves[p])} fill="none" stroke={POLICY_COLOR[p]} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />)}
-        {labels.map((l) => <text key={l.p} x={l.x} y={l.y} textAnchor="middle" fontSize="12" fontWeight={500} fill="var(--ink-2)">{POLICY_SHORT[l.p]}</text>)}
+        {labels.map((l) => <text key={l.p} x={l.x} y={l.y} textAnchor="middle" fontSize="12" fontWeight={500} fill="var(--ink-2)" stroke="var(--surface)" strokeWidth={4} strokeLinejoin="round" paintOrder="stroke">{POLICY_SHORT[l.p]}</text>)}
+        </g>
         {focus != null && (
           <g>
             <line x1={x(focus)} x2={x(focus)} y1={PAD.t} y2={H - PAD.b} stroke="var(--label)" strokeDasharray="3 3" />

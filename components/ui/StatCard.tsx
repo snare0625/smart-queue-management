@@ -1,4 +1,7 @@
+"use client";
 import type { ReactNode } from "react";
+import { motion } from "motion/react";
+import { cardIn } from "./motion";
 import type { LucideIcon } from "lucide-react";
 
 export type Tint = "brand" | "green" | "blue" | "purple" | "amber";
@@ -16,7 +19,7 @@ export function IconChip({ icon: I, tint = "brand", size = 30 }: { icon: LucideI
 /** KPI tile: label + icon chip on top, big value, small sub-line (and optional extra like a progress bar). */
 export function StatCard({ label, value, icon, tint, sub, children }: { label: string; value: ReactNode; icon: LucideIcon; tint?: Tint; sub?: ReactNode; children?: ReactNode }) {
   return (
-    <div className="pc-card" style={{ padding: "18px 20px", gap: 10 }}>
+    <motion.div variants={cardIn} className="pc-card" style={{ padding: "18px 20px", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <span style={{ font: "var(--type-control)", color: "var(--label)" }}>{label}</span>
         <IconChip icon={icon} tint={tint} />
@@ -24,6 +27,6 @@ export function StatCard({ label, value, icon, tint, sub, children }: { label: s
       <div style={{ font: "var(--type-kpi)", letterSpacing: "var(--tracking-tight)", color: "var(--ink)" }}>{value}</div>
       {children}
       {sub && <div style={{ font: "var(--type-label)", color: "var(--label)" }}>{sub}</div>}
-    </div>
+    </motion.div>
   );
 }

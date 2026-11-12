@@ -131,12 +131,18 @@ input::placeholder{color:var(--hint)}
 
 .pc-nav{display:flex;align-items:center;gap:12px;width:100%;height:40px;padding:0 14px;border:0;border-radius:var(--r-pill);background:transparent;color:var(--ink-2);font:var(--type-body);text-align:left;text-decoration:none;cursor:pointer;transition:background var(--dur-fast),color var(--dur-fast)}
 .pc-nav:hover{background:var(--raised);color:var(--ink)}
-.pc-nav[aria-current="page"]{background:var(--dark);color:#fff}
+.pc-nav[aria-current="page"]{background:transparent;color:#fff}
+/* the dark "selected" pill is its own element so it can slide between items (motion layoutId) */
+.pc-nav,.pc-seg button{position:relative;isolation:isolate}
+.pc-sel{position:absolute;inset:0;z-index:-1;border-radius:var(--r-pill);background:var(--dark)}
+
+.pc-skeleton{background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.8),rgba(255,255,255,0)) no-repeat var(--track);background-size:240px 100%;border-radius:8px;animation:pc-shimmer 1.3s ease-in-out infinite}
+@keyframes pc-shimmer{0%{background-position:-240px 0}100%{background-position:calc(100% + 240px) 0}}
 
 .pc-seg{display:inline-flex;gap:2px;padding:4px;background:var(--raised);border-radius:var(--r-pill);box-shadow:var(--hairline)}
 .pc-seg button{height:30px;padding:0 14px;border:0;border-radius:var(--r-pill);background:transparent;color:var(--ink-2);font:var(--type-control);white-space:nowrap;cursor:pointer}
 .pc-seg button:hover{color:var(--ink)}
-.pc-seg button[aria-pressed="true"]{background:var(--dark);color:#fff}
+.pc-seg button[aria-pressed="true"]{background:transparent;color:#fff}
 
 .pc-table{width:100%;border-collapse:separate;border-spacing:0}
 .pc-table th{height:40px;padding:0 16px;background:var(--raised);font:var(--type-label);color:var(--label);text-align:left;white-space:nowrap}

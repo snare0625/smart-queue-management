@@ -1,4 +1,6 @@
 "use client";
+import { motion } from "motion/react";
+import { pageIn } from "@/components/ui/motion";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Check, Dice5, Pause, Play, RotateCcw } from "lucide-react";
 import { Panel } from "@/components/ui/Panel";
@@ -115,7 +117,7 @@ export function SimulationPage() {
   };
 
   return (
-    <main style={{ display: "flex", flexDirection: "column", gap: "var(--gap)", minWidth: 0 }}>
+    <motion.main variants={pageIn} initial="hidden" animate="show" style={{ display: "flex", flexDirection: "column", gap: "var(--gap)", minWidth: 0 }}>
       <Panel title="Day setup">
         <p style={{ margin: 0, font: "var(--type-body)", color: "var(--ink-2)", maxWidth: 900 }}>
           A generated clinic day (08:00–17:00) with walk-ins, appointments, urgent cases, real service times that differ from the estimates, and people who leave if they wait too long.
@@ -159,7 +161,7 @@ export function SimulationPage() {
             );
           })}
         </div>
-        <WaitingChart results={results} open={day.open} cursor={minute} />
+        <WaitingChart key={`${seed}-${customers}`} results={results} open={day.open} cursor={minute} />
       </Panel>
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.4fr) minmax(0,1fr)", gap: "var(--gap)", alignItems: "start" }}>
@@ -180,6 +182,6 @@ export function SimulationPage() {
           </p>
         )}
       </Panel>
-    </main>
+    </motion.main>
   );
 }
