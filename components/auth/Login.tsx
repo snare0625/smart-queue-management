@@ -45,10 +45,14 @@ export function Login({ onOfflineDemo }: { onOfflineDemo: () => void }) {
           </label>
           {error && <div role="alert" style={{ font: "var(--type-label)", color: "var(--negative)" }}>{error}</div>}
           <Button type="submit" disabled={busy} style={{ height: 48 }}>{busy ? "Signing in…" : "Sign in"}</Button>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, font: "var(--type-control)" }}>
-            <button type="button" className="pc-btn pc-btn--ghost" style={{ height: "auto", font: "inherit" }} onClick={onOfflineDemo}>Use the offline demo</button>
-            <a href="/display" style={{ color: "var(--ink-2)" }}>Waiting-room screen</a>
+          {/* Visitors (e.g. recruiters) have no staff account: give them an obvious, equal-weight way in. */}
+          <div aria-hidden style={{ display: "flex", alignItems: "center", gap: 12, font: "var(--type-label)", color: "var(--label)" }}>
+            <span style={{ flex: 1, height: 1, background: "var(--track)" }} />or<span style={{ flex: 1, height: 1, background: "var(--track)" }} />
           </div>
+          <Button variant="secondary" onClick={onOfflineDemo} style={{ height: 48 }}>Explore the demo — no account needed</Button>
+          <p style={{ margin: 0, font: "var(--type-label)", color: "var(--label)", textAlign: "center" }}>
+            The demo runs a seeded clinic day in your browser. Or open the <a href="/display">public waiting-room screen</a>.
+          </p>
         </form>
 
         <aside aria-label="About QueuePro" style={{ position: "relative", overflow: "hidden", borderRadius: "var(--r-card)", background: "var(--dark)", color: "#fff", padding: "44px 44px 40px", display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 24 }}>
